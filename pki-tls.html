@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PKI &amp; TLS · Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/site.js"></script>
+<style>
+  .chain { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .cert { width: min(420px, 100%); border: 2px solid var(--line); border-radius: 12px; padding: 12px 16px; background: var(--bg); transition: border-color .2s, background .2s; }
+  .cert.ok { border-color: var(--green); }
+  .cert.bad { border-color: var(--red); background: var(--red-soft); }
+  .cert .t { font-weight: 700; font-size: 14.5px; display: flex; justify-content: space-between; gap: 8px; }
+  .cert .f { font: 12.5px/1.6 var(--mono); color: var(--ink-2); margin-top: 4px; }
+  .link { height: 34px; width: 2px; background: var(--ink-3); position: relative; }
+  .link span { position: absolute; left: 10px; top: 8px; font: 11.5px var(--sans); color: var(--ink-3); white-space: nowrap; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .toggles button { font: 600 12.5px var(--sans); border: 1px solid var(--line); background: var(--bg); color: var(--ink-2); padding: 6px 10px; border-radius: 99px; cursor: pointer; }
+  .toggles button[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: #fff; }
+  .checks { list-style: none; padding: 0; margin: 14px 0 0; font-size: 14px; }
+  .checks li { padding: 5px 0; border-bottom: 1px dashed var(--line); display: flex; gap: 10px; }
+  .checks li b { width: 18px; flex: none; }
+  .verdict { margin-top: 14px; padding: 12px 14px; border-radius: 10px; font-weight: 600; }
+  .hs { position: relative; }
+  .hs svg text { font-family: Inter, system-ui, sans-serif; }
+  .hs .msg { transition: opacity .3s; }
+  .hs .msg.off { opacity: .12; }
+</style>
+</head>
+<body data-page="pki">
+<div id="progress"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div>
+    <div class="topbar" id="topbar"></div>
+    <main>
+      <article class="page">
+        <div class="eyebrow">Chapter 04 · Trust</div>
+        <h1>PKI &amp; TLS</h1>
+        <p class="dek">Encryption answers “can anyone else read this?” The harder question is “<em>who am I actually talking to?</em>” Public key infrastructure is the internet's answer, and it's as much an operations discipline as a cryptographic one.</p>
+        <div class="meta"><span id="readTime"></span><span>·</span><div class="chips"><span class="chip">PKI &amp; Managing E-Security</span><span class="chip">Cryptology</span><span class="chip">Web Security</span></div></div>
+
+        <div class="core"><span class="label">Core idea</span>
+          Key exchange gives you a secret shared with <em>someone</em>. PKI tells you who. It works by <strong>delegated vouching</strong>: a small set of roots you already trust vouch for intermediates, which vouch for sites. The chain is only as strong as its weakest link and the operational discipline of everyone who holds a key.
+        </div>
+
+        <h2><span class="h-num">4.1</span>The problem PKI solves</h2>
+        <p>Chapter 03 ended with a gap. Diffie-Hellman lets two parties agree on a secret over an open channel, but if an attacker sits in the middle, you've securely agreed on a key <em>with the attacker</em>. Encryption without authentication is a private conversation with a stranger.</p>
+        <p>A <strong>certificate</strong> closes the gap. It's a signed statement: <em>“public key K belongs to bank.example, valid until this date, signed by a certificate authority.”</em> If you trust the CA's signing key, and the signature verifies, you can trust the binding. And how do you trust the CA? Another certificate, up to a <strong>root</strong> that ships preinstalled in your OS or browser's trust store. There are only a few hundred roots, and browsers and OS vendors (their “root programs”) police them hard.</p>
+
+        <h2><span class="h-num">4.2</span>How a browser validates a chain</h2>
+        <p>Every HTTPS connection runs this check in milliseconds. Break the chain below to see which step catches each failure.</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Break the chain of trust</b><span class="hint">toggle failures, then read the verdict</span></div>
+          <div class="lab-body">
+            <div class="toggles" id="tog">
+              <button type="button" data-k="expired" aria-pressed="false">Leaf expired</button>
+              <button type="button" data-k="name" aria-pressed="false">Wrong hostname</button>
+              <button type="button" data-k="revoked" aria-pressed="false">Intermediate revoked</button>
+              <button type="button" data-k="tamper" aria-pressed="false">Leaf tampered</button>
+              <button type="button" data-k="root" aria-pressed="false">Root not trusted</button>
+            </div>
+            <div class="chain">
+              <div class="cert" id="cRoot"><div class="t"><span>Root CA</span><span id="sRoot"></span></div><div class="f">Subject: Example Root R1<br>Self-signed · in OS trust store<br>Valid: 2020 → 2045</div></div>
+              <div class="link"><span>signs ↓</span></div>
+              <div class="cert" id="cInt"><div class="t"><span>Intermediate CA</span><span id="sInt"></span></div><div class="f">Subject: Example Issuing CA 3<br>Issuer: Example Root R1<br>CA:true · pathlen:0</div></div>
+              <div class="link"><span>signs ↓</span></div>
+              <div class="cert" id="cLeaf"><div class="t"><span>Leaf (server)</span><span id="sLeaf"></span></div><div class="f" id="leafF"></div></div>
+            </div>
+            <ul class="checks" id="checks"></ul>
+            <div class="verdict" id="verdict"></div>
+          </div>
+          <div class="lab-foot">Why intermediates? The root's private key stays offline in an HSM, used only rarely. Intermediates do day-to-day signing, so if one is compromised it can be revoked without replacing a root in billions of devices.</div>
+        </div>
+
+        <h2><span class="h-num">4.3</span>The TLS 1.3 handshake</h2>
+        <p>TLS is where Chapters 03 and 04 meet. The handshake does all three jobs from the hybrid-crypto diagram, key agreement, identity, and bulk encryption, in <strong>one round trip</strong>. Step through it:</p>
+
+        <div class="lab hs">
+          <div class="lab-head"><span class="tag">Lab</span><b>TLS 1.3, one message at a time</b></div>
+          <div class="lab-body">
+            <svg viewBox="0 0 640 330" id="hsSvg" role="img" aria-label="TLS 1.3 handshake sequence">
+              <text x="70" y="24" text-anchor="middle" font-weight="700" font-size="14" fill="var(--ink)">Client</text>
+              <text x="570" y="24" text-anchor="middle" font-weight="700" font-size="14" fill="var(--ink)">Server</text>
+              <line x1="70" y1="34" x2="70" y2="320" stroke="var(--line)" stroke-width="2"/>
+              <line x1="570" y1="34" x2="570" y2="320" stroke="var(--line)" stroke-width="2"/>
+              <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="var(--ink-2)"/></marker></defs>
+              <g class="msg" data-s="0"><line x1="72" y1="60" x2="566" y2="84" stroke="var(--blue)" stroke-width="2.5" marker-end="url(#ah)"/><text x="320" y="62" text-anchor="middle" font-size="13" fill="var(--blue)" font-weight="600">ClientHello + key_share + SNI</text></g>
+              <g class="msg" data-s="1"><line x1="568" y1="110" x2="74" y2="134" stroke="var(--violet)" stroke-width="2.5" marker-end="url(#ah)"/><text x="320" y="112" text-anchor="middle" font-size="13" fill="var(--violet)" font-weight="600">ServerHello + key_share</text></g>
+              <g class="msg" data-s="2"><rect x="96" y="146" width="448" height="24" rx="6" fill="var(--green-soft)"/><text x="320" y="163" text-anchor="middle" font-size="12.5" fill="var(--green)" font-weight="700">🔒 both sides now derive handshake keys (ECDHE)</text></g>
+              <g class="msg" data-s="3"><line x1="568" y1="188" x2="74" y2="212" stroke="var(--green)" stroke-width="2.5" marker-end="url(#ah)"/><text x="320" y="190" text-anchor="middle" font-size="13" fill="var(--green)" font-weight="600">{Certificate, CertificateVerify, Finished}</text></g>
+              <g class="msg" data-s="4"><line x1="72" y1="236" x2="566" y2="260" stroke="var(--green)" stroke-width="2.5" marker-end="url(#ah)"/><text x="320" y="238" text-anchor="middle" font-size="13" fill="var(--green)" font-weight="600">{Finished}</text></g>
+              <g class="msg" data-s="5"><line x1="72" y1="290" x2="566" y2="290" stroke="var(--accent)" stroke-width="3" marker-end="url(#ah)" marker-start="url(#ah)"/><text x="320" y="282" text-anchor="middle" font-size="13" fill="var(--accent)" font-weight="700">application data (AES-GCM / ChaCha20)</text></g>
+            </svg>
+            <div class="row" style="margin-top:6px"><button class="btn" id="hsPrev" type="button">← Back</button><button class="btn primary" id="hsNext" type="button">Next →</button><span class="small" id="hsCount" style="font-family:var(--sans)"></span></div>
+            <p id="hsText" style="margin:6px 0 0;min-height:72px"></p>
+          </div>
+          <div class="lab-foot">Braces = encrypted. In TLS 1.3 even the server's certificate is encrypted. TLS 1.2 took two round trips and allowed static RSA key exchange (no forward secrecy); 1.3 removed it along with weak ciphers.</div>
+        </div>
+
+        <h2><span class="h-num">4.4</span>Revocation, transparency, and the move to short lives</h2>
+        <p><strong>Revocation</strong> is PKI's historically weak spot. If a private key leaks, the certificate should stop being trusted before it expires. CRLs (published lists) got huge, and OCSP (live queries) was slow, leaked browsing history to the CA, and usually “soft-failed,” meaning that if the check couldn't be completed, browsers connected anyway. The industry's answer has been to <em>make certificates expire before revocation matters</em>. Let's Encrypt shut down its OCSP service in 2025.</p>
+        <p>In April 2025, the CA/Browser Forum passed Ballot SC-081 to shrink the maximum public TLS certificate lifetime in steps: <strong>398 days → 200 days (March 2026) → 100 days (March 2027) → 47 days (March 2029)</strong>. Domain-validation reuse drops to 10 days. At 47 days, manual renewal becomes impossible at scale. That's the point: the industry is forcing automation (ACME, cert-manager) and <strong>crypto agility</strong>, which the post-quantum migration will need.</p>
+        <p><strong>Certificate Transparency</strong> fixed a different problem: a CA mis-issuing a certificate for your domain. Every public certificate must now be logged in append-only, Merkle-tree-backed public logs (Chapter 01's data structure), and browsers require proof of logging. Anyone, including you, can monitor the logs for certificates issued for your domains (for example, with crt.sh).</p>
+
+        <div class="box breaks"><span class="label">Where it breaks</span>
+          <ul>
+            <li><strong>CA compromise:</strong> in 2011 DigiNotar was breached and issued a fraudulent <code>*.google.com</code> certificate that was used to intercept traffic in Iran. The CA was distrusted and went bankrupt. CT exists largely because of cases like this.</li>
+            <li><strong>Expired certificates:</strong> the most common PKI failure is operational. Equifax's 2017 breach went unnoticed for months partly because an expired certificate on a traffic-inspection device meant encrypted exfiltration wasn't being inspected.</li>
+            <li><strong>Validation turned off:</strong> <code>verify=False</code>, <code>InsecureSkipVerify: true</code>, and trust-all TrustManagers. One line in code silently cancels all of PKI.</li>
+            <li><strong>Private PKI sprawl:</strong> internal CAs with no inventory, 10-year certificates, and keys on disk.</li>
+          </ul>
+        </div>
+
+        <div class="box job"><span class="label">On the job (AppSec)</span>
+          <ul>
+            <li><strong>Code review:</strong> grep for disabled certificate verification. It's a Critical finding hiding in “temporary” test code.</li>
+            <li><strong>Service-to-service identity:</strong> mTLS in service meshes, workload identity (SPIFFE), and short-lived certificates instead of shared API keys.</li>
+            <li><strong>Supply chain:</strong> code signing and artifact signing (Sigstore/cosign) are PKI applied to software. Verify signatures in the deploy pipeline, not just at build.</li>
+            <li><strong>Certificate lifecycle:</strong> inventory, automated renewal, and expiry monitoring. The 47-day schedule makes this everybody's problem.</li>
+          </ul>
+        </div>
+
+        <div class="box sixty"><span class="label">Say it in 60 seconds</span>
+          <p>“PKI answers the question encryption can't: who am I talking to? A certificate binds a public key to a name, signed by a CA, and trust flows down from a small set of roots in the OS trust store through intermediates to the site. The browser checks the signatures, validity dates, hostname, and revocation status. TLS 1.3 puts it together in one round trip: an ephemeral key exchange for forward secrecy, the certificate to prove identity, and symmetric AEAD for the data. What I took away is that PKI fails operationally far more than cryptographically: expired certificates, disabled verification, compromised CAs. That's why the industry is moving to 47-day certificates, full automation, and transparency logs.”</p>
+        </div>
+
+        <h2>Check yourself</h2>
+        <div class="qs">
+          <details class="q"><summary>What happens, step by step, when I type https://bank.example into a browser?</summary><div class="a"><p>DNS resolves the name, then a TCP (or QUIC) connection is opened. The TLS 1.3 ClientHello goes out with a key share and SNI. The server replies with its key share, and both derive handshake keys. The server sends its certificate chain and a signature over the handshake transcript. The browser validates the chain to a trusted root, checks dates and hostname, and verifies the signature. Both sides exchange Finished messages and derive traffic keys. HTTP then flows over AES-GCM or ChaCha20.</p></div></details>
+          <details class="q"><summary>What's the difference between TLS and mTLS?</summary><div class="a"><p>In ordinary TLS only the server presents a certificate. In mutual TLS the client does too, so both sides are authenticated cryptographically. It's common for service-to-service traffic in zero-trust architectures and service meshes.</p></div></details>
+          <details class="q"><summary>Why are certificate lifetimes getting shorter?</summary><div class="a"><p>Revocation doesn't work reliably, so shorter lifetimes limit how long a compromised or mis-issued certificate stays useful. They also force automation and crypto agility, which the post-quantum migration will require. The CA/B Forum schedule goes 200 days (2026), 100 days (2027), then 47 days (2029).</p></div></details>
+          <details class="q"><summary>What does Certificate Transparency protect against?</summary><div class="a"><p>Mis-issuance: a CA (compromised, coerced, or careless) issuing a certificate for your domain to someone else. Because every public certificate must be logged publicly, domain owners can detect this, and browsers reject certificates without proof of logging.</p></div></details>
+        </div>
+
+        <div class="chapter-end" id="chapterEnd"></div>
+      </article>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  /* ---- chain lab ---- */
+  const state = { expired: false, name: false, revoked: false, tamper: false, root: false };
+  FM.$("#tog").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state[b.dataset.k] = !state[b.dataset.k]; b.setAttribute("aria-pressed", state[b.dataset.k]); render();
+  });
+  function render() {
+    const host = state.name ? "bank-example-login.com" : "bank.example";
+    FM.$("#leafF").innerHTML = `Subject: CN=bank.example<br>SAN: bank.example, www.bank.example<br>Valid: ${state.expired ? '<b style="color:var(--red)">2025-01-10 → 2025-04-10</b>' : "2026-08-01 → 2026-11-02"}<br>Visiting: <b>${host}</b>`;
+    const checks = [
+      ["Build a path from leaf → intermediate → a root in the trust store", !state.root, "Root isn't in the trust store. Nothing vouches for this chain. (Typical of self-signed or corporate interception certificates.)"],
+      ["Verify each certificate's signature with its issuer's public key", !state.tamper, "The leaf's contents don't match its signature. Someone modified it after issuance."],
+      ["Check validity dates on every certificate", !state.expired, "The leaf expired. Not an attack by itself, but browsers can't distinguish it from a stale stolen certificate."],
+      ["Check revocation status (CRL / OCSP / browser-pushed lists)", !state.revoked, "The issuing CA was revoked, so every certificate it signed is untrusted."],
+      ["Match the hostname against the Subject Alternative Names", !state.name, `You're visiting ${host}, but the certificate is only valid for bank.example. This is exactly what stops a phishing site from using a real certificate.`]
+    ];
+    FM.$("#checks").innerHTML = checks.map(([t, ok, why]) => `<li><b style="color:${ok ? "var(--green)" : "var(--red)"}">${ok ? "✓" : "✗"}</b><span>${t}${ok ? "" : `<br><span style="color:var(--red)">${why}</span>`}</span></li>`).join("");
+    const setC = (id, s, bad) => { FM.$(id).className = "cert " + (bad ? "bad" : "ok"); FM.$(s).innerHTML = bad ? '<span class="pill bad">✗</span>' : '<span class="pill ok">✓</span>'; };
+    setC("#cRoot", "#sRoot", state.root);
+    setC("#cInt", "#sInt", state.revoked);
+    setC("#cLeaf", "#sLeaf", state.expired || state.name || state.tamper);
+    const fails = checks.filter(c => !c[1]).length;
+    const v = FM.$("#verdict");
+    v.style.background = fails ? "var(--red-soft)" : "var(--green-soft)"; v.style.color = fails ? "var(--red)" : "var(--green)";
+    v.textContent = fails ? `⚠ Your connection is not private (${fails} check${fails > 1 ? "s" : ""} failed). The browser blocks the page.` : "🔒 Secure connection. The key really belongs to bank.example (as far as the CAs are concerned).";
+  }
+  render();
+
+  /* ---- handshake stepper ---- */
+  const STEPS = [
+    "<b>ClientHello.</b> The client lists its supported cipher suites and <em>guesses</em> the key-exchange group (X25519, or increasingly the hybrid X25519MLKEM768), sending its public key share immediately. SNI tells the server which site it wants. Guessing the group is how TLS 1.3 saves a round trip.",
+    "<b>ServerHello.</b> The server picks the cipher suite and sends its own ephemeral key share. Both sides now have what they need for Diffie-Hellman.",
+    "<b>Key derivation.</b> Each side combines its private share with the other's public share to reach the same secret. It's never transmitted. Ephemeral keys give <em>forward secrecy</em>: stealing the server's long-term key later can't decrypt this session.",
+    "<b>Certificate + CertificateVerify + Finished (encrypted).</b> The server proves identity: its certificate chain, plus a signature over the whole handshake transcript made with the certificate's private key. That signature is what defeats a man in the middle, who could relay messages but can't sign as bank.example.",
+    "<b>Client Finished.</b> The client validates the chain (the lab above), checks the signature, and sends a MAC over the transcript, confirming that nobody tampered with the negotiation (downgrade protection).",
+    "<b>Application data.</b> Traffic keys are derived and HTTP flows over AEAD. Total cost: one round trip before the first request, or zero with session resumption (0-RTT, which comes with replay caveats)."
+  ];
+  let s = 0;
+  function renderHs() {
+    FM.$$("#hsSvg .msg").forEach(g => g.classList.toggle("off", +g.dataset.s > s));
+    FM.$("#hsText").innerHTML = STEPS[s];
+    FM.$("#hsCount").textContent = `Step ${s + 1} of ${STEPS.length}`;
+    FM.$("#hsPrev").disabled = s === 0; FM.$("#hsNext").disabled = s === STEPS.length - 1;
+  }
+  FM.$("#hsNext").addEventListener("click", () => { s = Math.min(STEPS.length - 1, s + 1); renderHs(); });
+  FM.$("#hsPrev").addEventListener("click", () => { s = Math.max(0, s - 1); renderHs(); });
+  renderHs();
+})();
+</script>
+</body>
+</html>

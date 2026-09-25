@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Machines Work · Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/site.js"></script>
+<style>
+  .stack { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; margin: 10px 0 4px; }
+  .cell { aspect-ratio: 1; border-radius: 4px; display: grid; place-items: center; font: 500 12px var(--mono); background: var(--bg-2); border: 1px solid var(--line); color: var(--ink-3); transition: background .15s; }
+  .cell.buf { border-color: var(--blue); }
+  .cell.sfp { border-color: var(--amber); }
+  .cell.ret { border-color: var(--red); }
+  .cell.can { border-color: var(--green); }
+  .cell.f-buf { background: var(--blue-soft); color: var(--blue); }
+  .cell.f-over { background: var(--red-soft); color: var(--red); font-weight: 700; }
+  .regions { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; font: 600 11px var(--sans); color: var(--ink-3); }
+  .regions span { text-align: center; border-top: 2px solid; padding-top: 3px; }
+  .layer-fig .band { transition: opacity .2s; }
+</style>
+</head>
+<body data-page="foundations">
+<div id="progress"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div>
+    <div class="topbar" id="topbar"></div>
+    <main>
+      <article class="page">
+        <div class="eyebrow">Chapter 01 · Ground floor</div>
+        <h1>How machines really work</h1>
+        <p class="dek">I won't remember how to balance a red-black tree. I do remember that every system is a stack of abstractions, and that attackers make a living in the gaps between them.</p>
+        <div class="meta"><span id="readTime"></span><span>·</span>
+          <div class="chips"><span class="chip">Intro to Java</span><span class="chip">Data Structures</span><span class="chip">Computer Organization</span><span class="chip">Foundations of Algorithms</span></div>
+        </div>
+
+        <div class="core"><span class="label">Core idea</span>
+          Software is a promise made by an abstraction. Security bugs happen where the promise and the machine disagree: where the programmer thinks “this is a name” and the CPU sees “these are bytes, and the next ones are a return address.”
+        </div>
+
+        <h2><span class="h-num">1.1</span>A stack of promises</h2>
+        <p>The four bridge courses looked unrelated at the time. Put together, they describe one tower. Java taught the top: objects, types, and a runtime that checks array bounds for you. Computer Organization taught the bottom: registers, memory addresses, and an instruction cycle that fetches whatever bytes the program counter points to. Data Structures and Algorithms sat in the middle and taught that how you organize data decides what the system is good at, bad at, and vulnerable to.</p>
+        <p>Each layer hides the layer below it. That's why abstraction works, and it's also why abstraction leaks. A web developer thinks in strings. A database thinks in parsed queries. The OS thinks in pages and permissions, and the CPU thinks in speculative micro-operations. <strong>Every famous attack class is really a layer boundary where one side's assumptions didn't hold on the other side.</strong></p>
+
+        <figure class="layer-fig">
+          <svg viewBox="0 0 720 330" role="img" aria-label="Layers of abstraction with the attack class that lives at each boundary">
+            <g font-family="Inter, sans-serif" font-size="14">
+              <g class="band"><rect x="20" y="10" width="400" height="52" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="40" y="42" fill="var(--ink)" font-weight="600">Application logic</text><text x="250" y="42" fill="var(--ink-3)">“a user's name”</text></g>
+              <g class="band"><rect x="20" y="74" width="400" height="52" rx="10" fill="var(--violet-soft)" stroke="var(--violet)"/><text x="40" y="106" fill="var(--ink)" font-weight="600">Language / runtime</text><text x="250" y="106" fill="var(--ink-3)">objects, strings</text></g>
+              <g class="band"><rect x="20" y="138" width="400" height="52" rx="10" fill="var(--green-soft)" stroke="var(--green)"/><text x="40" y="170" fill="var(--ink)" font-weight="600">Operating system</text><text x="250" y="170" fill="var(--ink-3)">processes, pages</text></g>
+              <g class="band"><rect x="20" y="202" width="400" height="52" rx="10" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="40" y="234" fill="var(--ink)" font-weight="600">CPU / ISA</text><text x="250" y="234" fill="var(--ink-3)">instructions, cache</text></g>
+              <g class="band"><rect x="20" y="266" width="400" height="52" rx="10" fill="var(--red-soft)" stroke="var(--red)"/><text x="40" y="298" fill="var(--ink)" font-weight="600">Physical hardware</text><text x="250" y="298" fill="var(--ink-3)">DRAM, voltage</text></g>
+              <g fill="var(--accent)" font-size="13">
+                <path d="M430 68 h26" stroke="var(--accent)" stroke-width="2"/><text x="464" y="72">Injection: input parsed as code</text>
+                <path d="M430 132 h26" stroke="var(--accent)" stroke-width="2"/><text x="464" y="136">Memory corruption, deserialization</text>
+                <path d="M430 196 h26" stroke="var(--accent)" stroke-width="2"/><text x="464" y="200">Privilege escalation, sandbox escape</text>
+                <path d="M430 260 h26" stroke="var(--accent)" stroke-width="2"/><text x="464" y="264">Spectre / Meltdown (speculation)</text>
+                <path d="M430 318 h26" stroke="var(--accent)" stroke-width="2"/><text x="464" y="322">Rowhammer, side channels</text>
+              </g>
+            </g>
+          </svg>
+          <figcaption>Each boundary between layers is a place where one side's assumptions can fail on the other side.</figcaption>
+        </figure>
+
+        <h2><span class="h-num">1.2</span>Memory: where data becomes control</h2>
+        <p>Computer Organization's most security-relevant lesson is that <strong>code and data live in the same memory</strong>. That's the von Neumann design. When a C function runs, its local variables sit on the stack right next to bookkeeping the CPU relies on, including the <em>return address</em>: where to jump when the function finishes. If a program copies input into a fixed-size buffer without checking the length, the extra bytes don't vanish. They overwrite whatever comes next.</p>
+        <p>Try it. The buffer below holds 8 bytes. Type something longer.</p>
+
+        <div class="lab" id="bofLab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Stack buffer overflow</b><span class="hint">char name[8]; strcpy(name, input);</span></div>
+          <div class="lab-body">
+            <label for="bofIn">Input</label>
+            <input type="text" id="bofIn" value="MICHAEL" maxlength="40" autocomplete="off" spellcheck="false">
+            <div class="row" style="margin-top:12px">
+              <label style="margin:0">Defense:</label>
+              <div class="seg" id="bofDef">
+                <button type="button" data-v="none" aria-pressed="true">None (C, strcpy)</button>
+                <button type="button" data-v="canary" aria-pressed="false">Stack canary</button>
+                <button type="button" data-v="safe" aria-pressed="false">Memory-safe language</button>
+              </div>
+            </div>
+            <div class="stack" id="bofStack"></div>
+            <div class="regions" id="bofRegions"></div>
+            <p id="bofMsg" style="margin:14px 0 0"></p>
+          </div>
+          <div class="lab-foot">Real exploits put an address in those red cells that points back into attacker-controlled bytes. Modern mitigations (canaries, ASLR, non-executable stacks) raise the cost. Memory-safe languages remove the bug class.</div>
+        </div>
+
+        <p>That one mechanism accounts for a remarkable share of the worst vulnerabilities ever found. Microsoft and the Chromium project have both reported that roughly <strong>70% of their serious security bugs are memory-safety issues</strong>. That's why CISA, the NSA, and the big vendors now push memory-safe languages (Rust, Go, Java, C#) for new code. The Java course's “boring” bounds check, the <code>ArrayIndexOutOfBoundsException</code>, is a security control.</p>
+
+        <h2><span class="h-num">1.3</span>Data structures under an adversary</h2>
+        <p>Data Structures gets taught as a performance topic: pick the right structure and get O(1) lookups. The security version of that lesson: <strong>your average case is my attack surface</strong>. Complexity analysis usually assumes friendly input. An attacker chooses the worst case on purpose.</p>
+        <ul>
+          <li><strong>Hash tables → HashDoS.</strong> A hash table is O(1) until every key lands in the same bucket, and then it's O(n). In 2011, researchers showed that one crafted POST body could pin a web server's CPU across many languages' frameworks. The fix was randomized (keyed) hash functions, which is a crypto idea used to defend a data structure.</li>
+          <li><strong>Regex → ReDoS.</strong> Backtracking regex engines can go exponential on crafted input. One bad pattern in a validation routine can take down a service.</li>
+          <li><strong>Trees of hashes → integrity at scale.</strong> Merkle trees let you prove that one item belongs to a huge set without shipping the whole set. They're the backbone of Git, Certificate Transparency logs (Chapter 04), and software supply-chain systems like Sigstore.</li>
+        </ul>
+
+        <h2><span class="h-num">1.4</span>Hardness is the foundation</h2>
+        <p>Foundations of Algorithms ended in complexity theory: P, NP, and the idea that some problems have no known efficient solution. It felt abstract. It's actually the load-bearing wall of modern security. <strong>Cryptography is engineered asymmetry:</strong> an operation that's cheap one way (multiply two primes, hash a password) and believed infeasible the other way (factor the product, invert the hash).</p>
+        <p>“Infeasible” is a statement about exponential growth. Each added bit of key doubles the attacker's work. Slide it and watch:</p>
+
+        <div class="lab" id="bfLab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Brute force vs. key length</b><span class="hint">attacker tries 10<sup>12</sup> keys per second (a large GPU cluster)</span></div>
+          <div class="lab-body">
+            <div class="row" style="justify-content:space-between"><label for="bfBits" style="margin:0">Key length: <span id="bfBitsOut" class="mono"></span> bits</label><span id="bfTag" class="pill"></span></div>
+            <input type="range" id="bfBits" min="32" max="256" step="8" value="56">
+            <p style="margin:14px 0 4px;font-size:15px">Expected time to find the key (half the keyspace):</p>
+            <div class="out" id="bfOut" style="font-size:18px"></div>
+          </div>
+          <div class="lab-foot">DES (56-bit) fell to purpose-built hardware in 1998. AES-128 is out of reach of any conceivable classical computer. Chapter 09 covers what Grover's algorithm does to this curve (it roughly halves the bits) and what Shor's does to RSA (it breaks it outright).</div>
+        </div>
+
+        <p>That's the thread from this chapter to the frontier. <strong>Security built on hardness assumptions is only as durable as the assumptions.</strong> Quantum computing doesn't make math easier in general. It makes <em>specific</em> problems (factoring, discrete logarithms) easy, and those are exactly the ones public-key crypto depends on.</p>
+
+        <div class="box breaks"><span class="label">Where it breaks</span>
+          <ul>
+            <li><strong>Leaky abstractions:</strong> developers trust the layer below to behave as documented. Speculative execution (Spectre) broke that assumption in hardware itself.</li>
+            <li><strong>Unsafe languages at trust boundaries:</strong> C/C++ parsers handling untrusted input (images, fonts, network packets) are historically the richest source of remote code execution.</li>
+            <li><strong>Average-case thinking:</strong> designing for typical input when an adversary controls the input.</li>
+          </ul>
+        </div>
+
+        <div class="box job"><span class="label">On the job (AppSec)</span>
+          <ul>
+            <li>You read code in languages you don't write daily. The Java course's value is being able to trace data through a system: <em>where does this input go, and what touches it?</em></li>
+            <li>Memory-safety bugs show up in SAST findings, fuzzing crashes, and dependency CVEs. You triage them by asking whether attacker-controlled data reaches the unsafe operation.</li>
+            <li>Denial-of-service reviews: unbounded loops, regexes, recursion, and collection sizes on untrusted input.</li>
+          </ul>
+        </div>
+
+        <div class="box sixty"><span class="label">Say it in 60 seconds</span>
+          <p>“The bridge courses gave me a mental model of the full stack, from Java objects down to registers and memory. The security payoff is understanding why attacks work, not just that they do. A buffer overflow is data spilling into control information, because code and data share memory. Denial-of-service bugs are often an attacker forcing the worst case of a data structure. And crypto rests on complexity: problems that are cheap in one direction and infeasible in the other. That last point is why quantum matters, because it makes specific hard problems easy.”</p>
+        </div>
+
+        <h2>Check yourself</h2>
+        <div class="qs">
+          <details class="q"><summary>Why are memory-safety bugs so dangerous compared with other bugs?</summary><div class="a"><p>They let an attacker write outside the intended data region, into control data like return addresses, function pointers, or vtables. That can turn a crash into arbitrary code execution. Most other bugs corrupt a value; these can hijack the program's control flow.</p></div></details>
+          <details class="q"><summary>What do stack canaries, ASLR, and DEP/NX each do?</summary><div class="a"><p><strong>Canary:</strong> a secret value placed before the return address, checked before returning, so overwrites are detected. <strong>ASLR:</strong> randomizes where code and data load, so the attacker doesn't know which address to jump to. <strong>DEP/NX:</strong> marks the stack and heap non-executable, so injected bytes can't run directly. Attackers respond with information leaks and return-oriented programming (ROP). Mitigations raise cost; they don't remove the bug.</p></div></details>
+          <details class="q"><summary>Give an example of algorithmic complexity as a security issue.</summary><div class="a"><p>HashDoS: colliding keys turn O(1) hash table inserts into O(n), so n inserts cost O(n²). Or ReDoS: catastrophic backtracking in a regex. The fix is to bound input sizes and use randomized hashing or linear-time regex engines.</p></div></details>
+          <details class="q"><summary>Why does adding one bit to a key double the brute-force cost?</summary><div class="a"><p>The keyspace is 2<sup>n</sup>. Adding one bit makes it 2<sup>n+1</sup> = 2 × 2<sup>n</sup>. That exponential growth is why 128-bit symmetric keys are safe against classical brute force.</p></div></details>
+        </div>
+
+        <div class="chapter-end" id="chapterEnd"></div>
+      </article>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  /* ---- buffer overflow lab ---- */
+  const input = FM.$("#bofIn"), stack = FM.$("#bofStack"), regions = FM.$("#bofRegions"), msg = FM.$("#bofMsg");
+  let def = "none";
+  function layout() {
+    // 16 cells: buf(8) [canary(4)] sfp(4) ret(4) -> fit to 16 by varying
+    return def === "canary"
+      ? [["buf", 8, "name[8]", "var(--blue)"], ["can", 2, "canary", "var(--green)"], ["sfp", 2, "saved FP", "var(--amber)"], ["ret", 4, "return addr", "var(--red)"]]
+      : [["buf", 8, "name[8]", "var(--blue)"], ["sfp", 4, "saved frame ptr", "var(--amber)"], ["ret", 4, "return address", "var(--red)"]];
+  }
+  function render() {
+    const s = input.value;
+    const lay = layout();
+    const kinds = []; lay.forEach(([k, n]) => { for (let i = 0; i < n; i++) kinds.push(k); });
+    regions.innerHTML = lay.map(([k, n, name, col]) => `<span style="grid-column:span ${n};border-color:${col};color:${col}">${name}</span>`).join("");
+    const limit = def === "safe" ? 8 : 16;
+    let html = "";
+    for (let i = 0; i < 16; i++) {
+      const ch = i < s.length && i < limit ? s[i] : "";
+      const over = ch && i >= 8;
+      html += `<div class="cell ${kinds[i]} ${ch ? (over ? "f-over" : "f-buf") : ""}">${ch ? FM.esc(ch === " " ? "␣" : ch) : "·"}</div>`;
+    }
+    stack.innerHTML = html;
+    const len = s.length;
+    if (len <= 8) { msg.innerHTML = `<span class="pill ok">Fits</span> ${len} of 8 bytes used. The function returns normally.`; return; }
+    if (def === "safe") { msg.innerHTML = `<span class="pill ok">Blocked</span> The runtime checks bounds and throws <code>IndexOutOfBounds</code>. It's a crash (a bug) but not a hijack.`; return; }
+    if (def === "canary") {
+      msg.innerHTML = len > 8 ? `<span class="pill warn">Detected</span> The canary was overwritten. The check before <code>ret</code> fails and the process aborts: denial of service instead of code execution. (An attacker who can leak the canary can bypass this.)` : "";
+      return;
+    }
+    const hitsRet = len > 12;
+    msg.innerHTML = hitsRet
+      ? `<span class="pill bad">Hijacked</span> ${len - 8} bytes spilled past the buffer and overwrote the return address. When the function returns, the CPU jumps to <code>0x${[...s.slice(12, 16)].map(c => c.charCodeAt(0).toString(16).padStart(2, "0")).reverse().join("")}</code>, an address the attacker chose.`
+      : `<span class="pill warn">Corrupted</span> ${len - 8} bytes overwrote the saved frame pointer. Keep typing to reach the return address.`;
+  }
+  input.addEventListener("input", render);
+  FM.seg(FM.$("#bofDef"), v => { def = v; render(); });
+  render();
+
+  /* ---- brute force lab ---- */
+  const bits = FM.$("#bfBits"), out = FM.$("#bfOut"), bo = FM.$("#bfBitsOut"), tag = FM.$("#bfTag");
+  const AGE_UNIVERSE = 1.38e10;
+  function human(sec) {
+    const units = [["seconds", 1], ["minutes", 60], ["hours", 3600], ["days", 86400], ["years", 31557600]];
+    if (sec < 1) return "under a second";
+    let u = units[0];
+    for (const x of units) if (sec >= x[1]) u = x;
+    const v = sec / u[1];
+    if (u[0] === "years" && v > 1e6) {
+      const exp = Math.floor(Math.log10(v));
+      return `≈ 10^${exp} years (${(v / AGE_UNIVERSE).toExponential(1)} × the age of the universe)`;
+    }
+    return `≈ ${v < 10 ? v.toFixed(1) : Math.round(v).toLocaleString()} ${u[0]}`;
+  }
+  function renderBf() {
+    const n = +bits.value; bo.textContent = n;
+    const sec = Math.pow(2, n - 1) / 1e12;
+    out.textContent = human(sec);
+    const label = n <= 64 ? ["Breakable", "bad"] : n < 112 ? ["Nation-state risk", "warn"] : ["Out of reach", "ok"];
+    tag.textContent = label[0]; tag.className = "pill " + label[1];
+  }
+  bits.addEventListener("input", renderBf); renderBf();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security in the Organization · Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/site.js"></script>
+<style>
+  #csf .fn { cursor: pointer; transition: opacity .2s; }
+  #csf .fn path { stroke: var(--surface); stroke-width: 3; }
+  #csf.sel .fn:not(.on) { opacity: .35; }
+  #csf text { font-family: Inter, system-ui, sans-serif; pointer-events: none; }
+  .csf-wrap { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: center; }
+  @media (max-width: 680px) { .csf-wrap { grid-template-columns: 1fr; } #csf { max-width: 300px; margin: 0 auto; display: block; } }
+  .ale-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .ale-grid output { font: 600 14px var(--mono); color: var(--ink); }
+  .formula { font: 14px/1.8 var(--mono); background: var(--code-bg); border-radius: 8px; padding: 12px 14px; margin-top: 14px; }
+  .formula b { color: var(--accent); }
+  .say { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .say div { border-radius: 10px; padding: 14px; font-size: 14.5px; }
+  .say .eng { background: var(--bg); border: 1px solid var(--line); font-family: var(--mono); font-size: 13px; }
+  .say .exec { background: var(--blue-soft); }
+  .say b { display: block; font: 700 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; color: var(--ink-3); }
+  @media (max-width: 640px) { .say { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-page="org">
+<div id="progress"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div>
+    <div class="topbar" id="topbar"></div>
+    <main>
+      <article class="page">
+        <div class="eyebrow">Chapter 07 · The business</div>
+        <h1>Security in the organization</h1>
+        <p class="dek">Every earlier chapter assumed someone would fund the fix. This one is about how that actually happens: risk expressed in the business's language, frameworks that organize the work, and the gap between being compliant and being secure.</p>
+        <div class="meta"><span id="readTime"></span><span>·</span><div class="chips"><span class="chip">Cyber Operations, Risk &amp; Compliance</span><span class="chip">Foundations of IA</span></div></div>
+
+        <div class="core"><span class="label">Core idea</span>
+          Inside a company, security is a <strong>business-risk function</strong>. A technical risk that can't be translated into money, operations, legal exposure, or reputation doesn't get prioritized. And <strong>compliance is a floor, not a ceiling</strong>: it proves you did the required things, not that you're safe.
+        </div>
+
+        <h2><span class="h-num">7.1</span>Speaking the language</h2>
+        <p>The same finding needs two descriptions: one precise enough for the engineer who fixes it, and one that lets a leader weigh it against everything else competing for the same budget. The executive version isn't dumbed down. It's <em>translated</em> into impact, likelihood, cost, and a decision.</p>
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Translate the finding</b></div>
+          <div class="lab-body">
+            <div class="seg" id="trPick">
+              <button type="button" data-v="0" aria-pressed="true">IDOR</button>
+              <button type="button" data-v="1" aria-pressed="false">Unpatched library</button>
+              <button type="button" data-v="2" aria-pressed="false">Cert automation</button>
+            </div>
+            <div class="say" id="trOut"></div>
+          </div>
+          <div class="lab-foot">The pattern for the exec version: <b>what could happen</b> → <b>how likely</b> → <b>what it costs</b> → <b>what we recommend and what it costs to fix</b> → <b>what decision we need from you</b>.</div>
+        </div>
+
+        <h2><span class="h-num">7.2</span>Putting a number on it</h2>
+        <p>Quantitative risk analysis is often too precise to be accurate, but the classic model is worth knowing because it structures the argument. <strong>Single loss expectancy (SLE) = asset value × exposure factor. Annualized loss expectancy (ALE) = SLE × annual rate of occurrence (ARO).</strong> A control is worth buying when the reduction in ALE exceeds its annual cost. (Modern programs often use FAIR, which does the same thing with ranges and distributions instead of point estimates.)</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Is the control worth it?</b><span class="hint">classic ALE model</span></div>
+          <div class="lab-body">
+            <div class="ale-grid">
+              <div><label for="av">Asset value: <output id="avO"></output></label><input type="range" id="av" min="100000" max="20000000" step="100000" value="5000000"></div>
+              <div><label for="ef">Exposure factor: <output id="efO"></output></label><input type="range" id="ef" min="5" max="100" step="5" value="40"></div>
+              <div><label for="aro">Incidents per year (ARO): <output id="aroO"></output></label><input type="range" id="aro" min="0.02" max="2" step="0.02" value="0.3"></div>
+              <div><label for="red">Control reduces ARO by: <output id="redO"></output></label><input type="range" id="red" min="0" max="95" step="5" value="70"></div>
+              <div><label for="cost">Control cost per year: <output id="costO"></output></label><input type="range" id="cost" min="10000" max="2000000" step="10000" value="250000"></div>
+            </div>
+            <div class="formula" id="aleOut"></div>
+            <p id="aleMsg" style="margin:12px 0 0"></p>
+          </div>
+          <div class="lab-foot">The inputs are guesses, and that's fine. The value is in making assumptions explicit so people can argue about the right numbers instead of arguing about feelings.</div>
+        </div>
+
+        <h2><span class="h-num">7.3</span>The frameworks, and how they fit together</h2>
+        <p>There are a lot of acronyms, but they sort into three kinds. <strong>Frameworks</strong> organize a program. <strong>Control catalogs</strong> list what to do. <strong>Compliance regimes</strong> are what an auditor or regulator will check. The one to know cold is the <strong>NIST Cybersecurity Framework 2.0</strong> (2024), which added <em>Govern</em> at the center of the original five functions. Click a function:</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Map</span><b>NIST CSF 2.0</b><span class="hint">Govern sits in the middle and shapes the rest</span></div>
+          <div class="lab-body">
+            <div class="csf-wrap">
+              <svg id="csf" viewBox="0 0 300 300" role="img" aria-label="NIST CSF 2.0 functions wheel"></svg>
+              <div id="csfOut"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap"><table>
+          <thead><tr><th>Name</th><th>What it is</th><th>When you meet it</th></tr></thead>
+          <tbody>
+            <tr><td><b>NIST RMF</b> (SP 800-37)</td><td>Lifecycle for managing system risk: Prepare → Categorize → Select → Implement → Assess → Authorize → Monitor</td><td>Federal systems, getting an ATO</td></tr>
+            <tr><td><b>NIST SP 800-53</b></td><td>Catalog of security and privacy controls (AC, AU, IA, SC… families)</td><td>Federal, FedRAMP; widely borrowed</td></tr>
+            <tr><td><b>ISO/IEC 27001</b></td><td>Certifiable information security management system (ISMS)</td><td>International customers, enterprise sales</td></tr>
+            <tr><td><b>SOC 2</b></td><td>Auditor attestation against the Trust Services Criteria (security, availability, confidentiality…)</td><td>Every B2B SaaS security questionnaire</td></tr>
+            <tr><td><b>PCI DSS v4.0</b></td><td>Requirements for handling payment card data</td><td>Anything that touches card numbers</td></tr>
+            <tr><td><b>HIPAA / GDPR / state privacy laws</b></td><td>Legal obligations for health data and personal data</td><td>Breach notification, data handling, fines</td></tr>
+            <tr><td><b>SEC cyber disclosure rules</b> (2023)</td><td>Public companies disclose material incidents (Form 8-K) within four business days of determining materiality</td><td>Why boards now care about incident response</td></tr>
+            <tr><td><b>MITRE ATT&amp;CK</b></td><td>Knowledge base of real adversary tactics and techniques</td><td>Detection engineering, threat intel, red teams</td></tr>
+          </tbody>
+        </table></div>
+
+        <h2><span class="h-num">7.4</span>Compliance is not security</h2>
+        <p>Compliance tells you a control <em>exists</em> and was <em>tested at a point in time</em>. Security asks whether the control actually stops the adversary today. They overlap, and compliance is genuinely useful: it forces baselines, funds programs, and creates evidence. But organizations regularly pass audits and get breached anyway, because audits sample, checklists lag the threat, and a control that exists on paper (say, “we review access quarterly”) can be performed badly in practice. The healthy stance: <strong>build for security, and let compliance be the evidence that falls out of it.</strong></p>
+
+        <h2><span class="h-num">7.5</span>Operations: what happens when something goes wrong</h2>
+        <p>A security operations center (SOC) collects telemetry (logs into a <strong>SIEM</strong>, endpoint data from <strong>EDR</strong>), turns it into alerts with detection rules often mapped to ATT&amp;CK, and automates repetitive response with <strong>SOAR</strong>. Incident response follows the NIST lifecycle (SP 800-61, revised in 2025 to align with CSF 2.0): <strong>prepare → detect &amp; analyze → contain, eradicate &amp; recover → learn</strong>. The step organizations skip is the last one, the blameless post-incident review, which is where the program actually improves. The metrics everyone tracks are <strong>mean time to detect (MTTD)</strong> and <strong>mean time to respond (MTTR)</strong>, because dwell time is damage.</p>
+
+        <div class="box breaks"><span class="label">Where it breaks</span>
+          <ul>
+            <li><strong>Checkbox security:</strong> optimizing for the audit instead of the adversary.</li>
+            <li><strong>Risk accepted by nobody:</strong> a risk with no named owner and no review date isn't accepted; it's ignored.</li>
+            <li><strong>Fear-driven asks:</strong> “we could get hacked” without likelihood, impact, or options loses credibility fast.</li>
+            <li><strong>Untested plans:</strong> an incident response plan nobody has exercised fails on first contact. Tabletop exercises exist for this.</li>
+          </ul>
+        </div>
+
+        <div class="box job"><span class="label">On the job (AppSec)</span>
+          <ul>
+            <li><strong>Severity with context:</strong> turning a CVSS score into a business priority (reachability, data sensitivity, exposure).</li>
+            <li><strong>Evidence for audits:</strong> SOC 2 and PCI ask for secure SDLC evidence, like SAST in CI, code review, and vulnerability SLAs. AppSec owns much of it.</li>
+            <li><strong>Risk exceptions:</strong> writing up a risk acceptance with an owner, compensating controls, and an expiry date.</li>
+            <li><strong>Incident support:</strong> when the incident is an application vulnerability, AppSec finds the root cause, scopes the impact, and ships the fix.</li>
+            <li><strong>Security questionnaires:</strong> answering customers' “do you do X?” honestly and consistently.</li>
+          </ul>
+        </div>
+
+        <div class="box sixty"><span class="label">Say it in 60 seconds</span>
+          <p>“This course taught me that inside an organization, security is a risk function. My job isn't to eliminate risk. It's to make it visible and help the business make informed decisions. So I translate findings into impact, likelihood, cost, and a clear ask, and I can use models like ALE or FAIR to compare a control's cost with the loss it prevents. I know the landscape: NIST CSF 2.0 to organize a program, 800-53 and ISO 27001 for controls, and SOC 2, PCI, and privacy law as compliance obligations. The key distinction is that compliance proves controls exist at a point in time; security is whether they actually stop an attacker today. Good programs build for security and let compliance fall out as evidence.”</p>
+        </div>
+
+        <h2>Check yourself</h2>
+        <div class="qs">
+          <details class="q"><summary>What are the six functions of NIST CSF 2.0?</summary><div class="a"><p>Govern, Identify, Protect, Detect, Respond, Recover. Govern was added in 2.0 to cover strategy, roles, policy, risk appetite, and supply-chain risk management. It's the center that informs the other five.</p></div></details>
+          <details class="q"><summary>What's the difference between a vulnerability, a threat, and a risk?</summary><div class="a"><p>A <strong>vulnerability</strong> is a weakness (an unpatched server). A <strong>threat</strong> is something that could exploit it (a ransomware crew). <strong>Risk</strong> is the likelihood and impact of the threat exploiting the vulnerability against something you value. No threat or no valuable asset means little risk, even with a vulnerability.</p></div></details>
+          <details class="q"><summary>How would you convince leadership to fund a security project?</summary><div class="a"><p>Tie it to a business outcome they already care about: revenue (enterprise deals need SOC 2), regulatory exposure, or operational resilience. Quantify the risk with honest ranges. Present options with costs, including doing nothing. Make a clear recommendation and ask for a decision. Avoid fear-mongering and jargon.</p></div></details>
+          <details class="q"><summary>What does a good risk acceptance look like?</summary><div class="a"><p>It includes a clear description of the risk and its potential impact, a named business owner with the authority to accept it, any compensating controls, and an expiry or review date, after which it's re-evaluated rather than silently permanent.</p></div></details>
+        </div>
+
+        <div class="chapter-end" id="chapterEnd"></div>
+      </article>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  /* translate */
+  const TR = [
+    ["GET /api/orders/{id} lacks an object-level authz check; any authenticated user can enumerate sequential IDs and read other customers' orders, including names, addresses, and last-4 card digits. CVSS 6.5. Fix: owner_id check in the handler plus central policy middleware. Est. 2 dev-days.",
+     "Any logged-in customer can view any other customer's order details and shipping address. It's easy to find and could expose our whole customer base. That's a reportable privacy incident and a likely news story. The fix is small (about 2 days). <b>Recommend: fix this sprint, and check logs to confirm whether it's been exploited.</b>"],
+    ["jackson-databind 2.9.x in the billing service has a known deserialization RCE (CVE). SCA flagged it. Reachability analysis: the vulnerable polymorphic typing is enabled on one internal endpoint. Upgrade needs regression testing on the billing flows.",
+     "A component in our billing system has a publicly known flaw that can let an attacker take over the server. It's only reachable from inside our network today, which lowers the urgency but doesn't remove it. The upgrade takes about a week of testing. <b>Recommend: schedule it within 30 days, and restrict access to that endpoint as a stopgap now.</b>"],
+    ["~340 public TLS certs, most renewed manually on 1-year cycles. CA/B Forum SC-081 cuts max validity to 200d (Mar 2026), 100d (Mar 2027), 47d (Mar 2029). Proposal: ACME automation plus a cert inventory and expiry monitoring. ~6 weeks eng.",
+     "Industry rules are forcing web certificates to be renewed every ~6 weeks by 2029, eight times more often than today. We do it by hand now, and an expired certificate takes a customer-facing site down. <b>Recommend: invest about 6 weeks now to automate, avoiding outages and a growing manual workload.</b>"]
+  ];
+  const trOut = FM.$("#trOut");
+  function tr(i) { trOut.innerHTML = `<div class="eng"><b>For the engineer</b>${TR[i][0]}</div><div class="exec"><b>For the VP</b>${TR[i][1]}</div>`; }
+  FM.seg(FM.$("#trPick"), v => tr(+v)); tr(0);
+
+  /* ALE */
+  const $ = FM.$, money = n => "$" + (n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : Math.round(n / 1e3) + "K");
+  function ale() {
+    const av = +$("#av").value, ef = +$("#ef").value / 100, aro = +$("#aro").value, red = +$("#red").value / 100, cost = +$("#cost").value;
+    $("#avO").textContent = money(av); $("#efO").textContent = Math.round(ef * 100) + "%"; $("#aroO").textContent = aro.toFixed(2) + " (once every " + (1 / aro).toFixed(1) + " yrs)"; $("#redO").textContent = Math.round(red * 100) + "%"; $("#costO").textContent = money(cost);
+    const sle = av * ef, ale0 = sle * aro, ale1 = sle * aro * (1 - red), benefit = ale0 - ale1, net = benefit - cost;
+    $("#aleOut").innerHTML = `SLE  = ${money(av)} × ${Math.round(ef * 100)}% = <b>${money(sle)}</b>\nALE before = ${money(sle)} × ${aro.toFixed(2)} = <b>${money(ale0)}</b>/yr\nALE after  = ${money(ale0)} × ${Math.round((1 - red) * 100)}% = <b>${money(ale1)}</b>/yr\nRisk reduced ${money(benefit)}/yr − control ${money(cost)}/yr = <b>${net >= 0 ? "+" : "−"}${money(Math.abs(net))}</b>/yr`.replace(/\n/g, "<br>");
+    $("#aleMsg").innerHTML = net > 0 ? `<span class="pill ok">Buy it</span> The control pays for itself in expected-loss terms (ROSI ≈ ${(net / cost * 100).toFixed(0)}%).`
+      : `<span class="pill warn">Hard to justify on numbers alone</span> Look for a cheaper control, or accept the risk explicitly. Regulatory or reputational factors may still tip it.`;
+  }
+  ["#av", "#ef", "#aro", "#red", "#cost"].forEach(s => $(s).addEventListener("input", ale)); ale();
+
+  /* CSF wheel */
+  const FN = [
+    ["Identify", "var(--blue)", "Know what you have and what matters: asset inventory, business environment, risk assessment, improvement.", "AppSec angle: an application inventory with owners and data classification. You can't secure the service nobody knows exists."],
+    ["Protect", "var(--violet)", "Safeguards: identity and access management, awareness and training, data security, platform security, resilient infrastructure.", "AppSec angle: secure SDLC, secure defaults, secrets management, and hardening. Most of Chapter 05."],
+    ["Detect", "var(--amber)", "Find attacks in progress: continuous monitoring and adverse-event analysis.", "AppSec angle: application logging that security can actually use (auth events, authz failures), plus runtime protection."],
+    ["Respond", "var(--red)", "Act on detected incidents: incident management, analysis, reporting and communication, mitigation.", "AppSec angle: root-causing app vulnerabilities, hotfixing, and scoping what data was touched."],
+    ["Recover", "var(--green)", "Restore operations and communicate: recovery plan execution and communication.", "AppSec angle: safe rollback, tested backups, and the post-incident fixes that stop recurrence."]
+  ];
+  const svg = FM.$("#csf"), NS = "http://www.w3.org/2000/svg", cx = 150, cy = 150, R = 140, r = 58;
+  function arc(a0, a1) {
+    const p = (a, rad) => [cx + rad * Math.cos(a), cy + rad * Math.sin(a)];
+    const [x0, y0] = p(a0, R), [x1, y1] = p(a1, R), [x2, y2] = p(a1, r), [x3, y3] = p(a0, r);
+    return `M${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${r} ${r} 0 0 0 ${x3} ${y3}Z`;
+  }
+  let html = "";
+  FN.forEach((f, i) => {
+    const a0 = -Math.PI / 2 + i * 2 * Math.PI / 5, a1 = a0 + 2 * Math.PI / 5, am = (a0 + a1) / 2;
+    html += `<g class="fn" data-i="${i}"><path d="${arc(a0, a1)}" fill="${f[1]}" opacity=".85"/><text x="${cx + 100 * Math.cos(am)}" y="${cy + 100 * Math.sin(am) + 4}" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">${f[0]}</text></g>`;
+  });
+  html += `<g class="fn" data-i="5"><circle cx="${cx}" cy="${cy}" r="${r - 4}" fill="var(--ink)"/><text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="15" font-weight="700" fill="var(--bg)">Govern</text></g>`;
+  svg.innerHTML = html;
+  const GOV = ["Govern", "", "The new center (2.0): organizational context, risk management strategy, roles and responsibilities, policy, oversight, and cybersecurity supply-chain risk management.", "AppSec angle: the secure SDLC policy, vulnerability SLAs, and who is allowed to accept risk. It's the rules the other five functions run on."];
+  function pick(i) {
+    svg.classList.add("sel"); FM.$$(".fn", svg).forEach(g => g.classList.toggle("on", +g.dataset.i === i));
+    const f = i === 5 ? GOV : FN[i];
+    FM.$("#csfOut").innerHTML = `<h3 style="margin:0 0 6px">${f[0]}</h3><p style="margin:0 0 8px;font-size:15.5px">${f[2]}</p><p style="margin:0;font-size:15px;color:var(--blue)">${f[3]}</p>`;
+  }
+  svg.addEventListener("click", e => { const g = e.target.closest(".fn"); if (g) pick(+g.dataset.i); });
+  pick(5);
+})();
+</script>
+</body>
+</html>

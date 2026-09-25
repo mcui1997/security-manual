@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interview Mode · Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/site.js"></script>
+<style>
+  .timer { font: 700 40px var(--mono); font-variant-numeric: tabular-nums; }
+  .timer.low { color: var(--red); }
+  .story p { font-size: 18px; }
+  .story .beat { font: 700 11.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); display: block; margin-top: 12px; }
+  .fc-ctrl { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-family: var(--sans); }
+  .fc-ctrl select { font: 14px var(--sans); padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .fc-meta { font: 13px var(--sans); color: var(--ink-3); margin-left: auto; }
+  .fc-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; font-family: var(--sans); }
+  .ask li { margin: 8px 0; }
+</style>
+</head>
+<body data-page="interview">
+<div id="progress"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div>
+    <div class="topbar" id="topbar"></div>
+    <main>
+      <article class="page">
+        <div class="eyebrow">Chapter 10 · Review</div>
+        <h1>Interview mode</h1>
+        <p class="dek">Reading builds recognition; interviews test recall, out loud, under a little pressure. This page is for practicing the second one.</p>
+        <div class="meta"><span>≈20 minutes</span><span>·</span><span>Say everything out loud</span></div>
+
+        <h2><span class="h-num">10.1</span>The 2-minute story</h2>
+        <p>“Tell me about your background” or “what did you get out of your master's?” It deserves a rehearsed answer that isn't a transcript recital. The shape: <em>where I started → the threads I found → proof I can build → where I'm going.</em> Start the timer and say it out loud.</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Practice</span><b>Deliver it in under two minutes</b></div>
+          <div class="lab-body">
+            <div class="row"><span class="timer" id="timer">2:00</span><button class="btn primary" id="tStart" type="button">Start</button><button class="btn" id="tReset" type="button">Reset</button><button class="btn" id="tHide" type="button" aria-pressed="false">Hide script</button></div>
+            <div class="story" id="story">
+              <span class="beat">Where I started</span>
+              <p>“I came into Hopkins' cybersecurity master's through the bridge courses: programming, data structures, computer organization, and algorithms. That gave me a full-stack mental model, from code down to memory and CPU, which I lean on to understand <em>why</em> attacks work, not just that they do.”</p>
+              <span class="beat">The threads</span>
+              <p>“Looking back, the degree had two threads. One was trust and cryptography: cryptology, then PKI, then web security, and now post-quantum. The lesson there is that the math rarely breaks. Systems fail at key management, certificate operations, and above all application code that treats data as instructions or forgets an authorization check. The other thread was AI, both as a defensive tool and as a new attack surface, through AI for cybersecurity, MLOps, and now assured autonomy.”</p>
+              <span class="beat">Proof I can build</span>
+              <p>“My biggest project was a research paper where our team built a Vision Transformer that detects IoT malware traffic. We turned packet bytes into images so the transformer could see a whole packet efficiently, and added few-shot learning so it can pick up new malware families from a handful of examples.”</p>
+              <span class="beat">Where I'm going</span>
+              <p>“I want to work in application security, because that's where all of this converges. Threat modeling a design, reviewing code for injection and access-control flaws, running a secure SDLC that developers actually like, and increasingly securing AI features against things like prompt injection. My risk and compliance coursework means I can also explain those findings in business terms.”</p>
+            </div>
+          </div>
+          <div class="lab-foot">Make it yours: swap in your own phrasing, add your current job in one sentence, and cut until it fits in 1:45. Rehearsed shouldn't mean memorized word for word.</div>
+        </div>
+
+        <h2><span class="h-num">10.2</span>Flashcards</h2>
+        <p>Click the card (or press space) to flip. Mark each one. Cards you mark “again” come back before the round ends.</p>
+        <div class="fc-ctrl">
+          <select id="fcFilter" aria-label="Filter by chapter"></select>
+          <button class="btn" id="fcShuffle" type="button">Shuffle</button>
+          <span class="fc-meta" id="fcMeta"></span>
+        </div>
+        <div class="flash"><div class="flash-card" id="fcCard" tabindex="0" role="button" aria-label="Flashcard. Press space to flip.">
+          <div class="flash-face front"><div class="tag" id="fcTag"></div><div class="fq" id="fcQ"></div><div class="small" style="margin-top:14px;font-family:var(--sans)">click to reveal</div></div>
+          <div class="flash-face back" id="fcA"></div>
+        </div></div>
+        <div class="fc-actions"><button class="btn" id="fcAgain" type="button">↻ Again</button><button class="btn primary" id="fcGot" type="button">✓ Got it</button></div>
+
+        <h2><span class="h-num">10.3</span>Technical questions to rehearse</h2>
+        <p>These come up in AppSec interviews constantly. Each links to where the answer lives.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Question</th><th>Where</th></tr></thead>
+          <tbody>
+            <tr><td>What happens when you type a URL and press enter? (Go deep on TLS.)</td><td><a href="pki-tls.html">04</a></td></tr>
+            <tr><td>Explain SQL injection and XSS, and how you'd fix each at the root.</td><td><a href="appsec.html">05</a></td></tr>
+            <tr><td>How would you find and fix an IDOR at scale across 200 endpoints?</td><td><a href="appsec.html">05</a></td></tr>
+            <tr><td>Walk me through threat modeling a feature I describe.</td><td><a href="security-thinking.html">02</a></td></tr>
+            <tr><td>How should passwords be stored? What about API keys and secrets?</td><td><a href="cryptography.html">03</a></td></tr>
+            <tr><td>Sessions vs. JWTs, OAuth vs. OIDC: when and why?</td><td><a href="appsec.html">05</a></td></tr>
+            <tr><td>SAST vs. DAST vs. SCA: what do you run, where, and how do you handle noise?</td><td><a href="appsec.html">05</a></td></tr>
+            <tr><td>How would you secure an LLM feature that has tool access?</td><td><a href="ai-security.html">06</a>, <a href="assured-autonomy.html">08</a></td></tr>
+            <tr><td>A critical finding lands the week of launch. What do you do?</td><td><a href="appsec.html">05</a>, <a href="organization.html">07</a></td></tr>
+            <tr><td>What's CORS, and why isn't it a security control?</td><td><a href="appsec.html">05</a></td></tr>
+            <tr><td>What does post-quantum migration mean for our systems?</td><td><a href="quantum.html">09</a></td></tr>
+            <tr><td>Tell me about a project you're proud of. (Packets to Pixels.)</td><td><a href="ai-security.html">06</a></td></tr>
+          </tbody>
+        </table></div>
+
+        <h2><span class="h-num">10.4</span>Questions to ask them</h2>
+        <ul class="ask">
+          <li>“How is the AppSec team embedded with engineering: central team, security champions, or both?”</li>
+          <li>“Where in the SDLC do you catch most issues today, and where do you wish you caught them?”</li>
+          <li>“How do you decide what gets fixed first? Who can accept a risk?”</li>
+          <li>“How are you approaching security for AI features and AI-generated code?”</li>
+          <li>“What would make someone in this role successful in their first 90 days?”</li>
+        </ul>
+
+        <div class="chapter-end" id="chapterEnd"></div>
+      </article>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  /* ---------- timer ---------- */
+  let left = 120, tid = null;
+  const tEl = FM.$("#timer"), startBtn = FM.$("#tStart");
+  const show = () => { tEl.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`; tEl.classList.toggle("low", left <= 15); };
+  startBtn.addEventListener("click", () => {
+    if (tid) { clearInterval(tid); tid = null; startBtn.textContent = "Resume"; return; }
+    startBtn.textContent = "Pause";
+    tid = setInterval(() => { left = Math.max(0, left - 1); show(); if (!left) { clearInterval(tid); tid = null; startBtn.textContent = "Start"; tEl.textContent = "Time!"; } }, 1000);
+  });
+  FM.$("#tReset").addEventListener("click", () => { clearInterval(tid); tid = null; left = 120; startBtn.textContent = "Start"; show(); });
+  FM.$("#tHide").addEventListener("click", e => { const h = e.target.getAttribute("aria-pressed") !== "true"; e.target.setAttribute("aria-pressed", h); e.target.textContent = h ? "Show script" : "Hide script"; FM.$("#story").style.display = h ? "none" : ""; });
+  show();
+
+  /* ---------- flashcards ---------- */
+  const CARDS = [
+    ["01", "Why can a buffer overflow lead to code execution?", "Code and data share memory. Overflowing a stack buffer overwrites adjacent control data like the <b>return address</b>, so when the function returns, the CPU jumps where the attacker chose. Mitigations: canaries, ASLR, NX. The real fix is memory-safe languages."],
+    ["01", "What's the security lesson of Big-O?", "Your average case is the attacker's choice of worst case: <b>HashDoS</b> (colliding keys make O(1) into O(n)), <b>ReDoS</b> (catastrophic regex backtracking). Bound inputs, use randomized hashing and linear-time regex."],
+    ["01", "Why is crypto tied to complexity theory?", "Crypto is engineered asymmetry: easy one way, <b>infeasible</b> the other (factoring, discrete log, hash inversion). Security is only as durable as the hardness assumption. Quantum breaks some of them."],
+    ["02", "Name the STRIDE categories and what each violates.", "<b>S</b>poofing → authenticity · <b>T</b>ampering → integrity · <b>R</b>epudiation → non-repudiation · <b>I</b>nfo disclosure → confidentiality · <b>D</b>oS → availability · <b>E</b>levation → authorization."],
+    ["02", "Shostack's four threat-modeling questions?", "1. What are we working on? 2. What can go wrong? 3. What are we going to do about it? 4. Did we do a good job?"],
+    ["02", "Define complete mediation, and give an example of its violation.", "Check authorization on <b>every</b> access. Violation: the admin button is hidden in the UI, but the API endpoint doesn't check the role."],
+    ["02", "Risk treatment options?", "<b>Mitigate</b> (add a control), <b>avoid</b> (don't do it), <b>transfer</b> (insurance/vendor), <b>accept</b> (documented, owned, with a review date)."],
+    ["03", "Hash vs. MAC vs. signature?", "<b>Hash:</b> integrity fingerprint, no key, so anyone can recompute. <b>MAC:</b> shared key, gives integrity plus authenticity. <b>Signature:</b> private key, gives authenticity plus <b>non-repudiation</b>, and anyone can verify."],
+    ["03", "Why not SHA-256 for passwords?", "It's designed to be <b>fast</b>, so GPUs try billions per second. Use slow, salted, memory-hard KDFs: <b>Argon2id</b>, scrypt, bcrypt."],
+    ["03", "What's wrong with ECB mode?", "Identical plaintext blocks produce identical ciphertext blocks, so the structure leaks (the penguin). Use an AEAD mode like AES-GCM or ChaCha20-Poly1305 via a high-level library."],
+    ["03", "What is forward secrecy?", "Ephemeral key exchange per session, so stealing the long-term key later can't decrypt recorded past sessions. Required in TLS 1.3."],
+    ["03", "“Crypto turns a data problem into a ___ problem.”", "A <b>key-management</b> problem: generation, storage (HSM/KMS), access, rotation, revocation. That's where crypto actually fails."],
+    ["04", "What does a certificate actually assert?", "“Public key K belongs to name N, valid for these dates,” <b>signed by a CA</b>. Trust flows from roots in the OS/browser trust store through intermediates."],
+    ["04", "Five checks a browser does on a certificate chain?", "Path to a trusted root · signature on each certificate · validity dates · revocation · <b>hostname matches SAN</b>."],
+    ["04", "Public TLS certificate lifetime schedule?", "398 days → <b>200</b> (Mar 2026) → <b>100</b> (Mar 2027) → <b>47</b> (Mar 2029), per CA/B Forum SC-081. It forces automation and crypto agility."],
+    ["04", "What does Certificate Transparency prevent?", "Undetected <b>mis-issuance</b>. Every public certificate is logged in append-only Merkle-tree logs, so domain owners can monitor for rogue certificates."],
+    ["05", "The two root causes behind most app vulns?", "1. <b>Data interpreted as code</b> (injection: SQLi, XSS, command, prompt). 2. <b>Missing authorization</b> (IDOR/BOLA, missing function-level checks)."],
+    ["05", "Why don't scanners find IDOR well?", "The vulnerable response is a valid <b>200 OK</b>. Detecting it requires knowing who <em>should</em> see what, which takes business context. Manual review plus centralized authz."],
+    ["05", "OWASP Top 10:2025, #1–#3?", "A01 <b>Broken Access Control</b> (now includes SSRF) · A02 <b>Security Misconfiguration</b> · A03 <b>Software Supply Chain Failures</b> (new)."],
+    ["05", "OWASP 2025's two new categories?", "<b>A03 Software Supply Chain Failures</b> and <b>A10 Mishandling of Exceptional Conditions</b> (failing open, bad error handling)."],
+    ["05", "OAuth 2.0 vs. OIDC?", "OAuth 2.0 = <b>delegated authorization</b> (access tokens). OIDC = <b>authentication</b> layer on top (ID token, who logged in). Use auth code flow with PKCE."],
+    ["05", "Why are passkeys phishing-resistant?", "WebAuthn credentials are <b>bound to the origin</b>. The browser won't use bank.com's key on bank-login.evil, and there's no shared secret to type into a fake page."],
+    ["06", "The base-rate trap?", "When attacks are rare, even a low false-positive rate produces mostly false alerts. 99% recall with 1% FPR at a 1-in-10,000 base rate means <1% of alerts are real."],
+    ["06", "Packets to Pixels in one breath?", "Reshape packet bytes into 2D <b>packet images</b> → patches become tokens for a <b>Vision Transformer</b> (global attention, far fewer tokens) → <b>few-shot</b> head adapts to new malware families from a handful of examples. Evaluated on <b>CIC-IoT23</b>."],
+    ["06", "Four classic adversarial-ML attacks?", "<b>Evasion</b> (crafted inputs), <b>poisoning</b> (tainted training data/backdoors), <b>extraction</b> (clone the model), <b>inference</b> (learn about training data). Catalog: MITRE ATLAS."],
+    ["06", "Why is prompt injection hard to fix?", "LLMs have no separate channel for instructions vs. data, so there's no “parameterized query.” Defend the system: least-privilege tools, human approval, treat output as untrusted, isolate untrusted content."],
+    ["07", "NIST CSF 2.0 functions?", "<b>Govern</b> (new, at the center), Identify, Protect, Detect, Respond, Recover."],
+    ["07", "ALE formula?", "SLE = asset value × exposure factor. <b>ALE = SLE × ARO</b>. A control is justified if the ALE reduction exceeds its annual cost."],
+    ["07", "Compliance vs. security?", "Compliance proves controls <b>exist and were tested at a point in time</b>. Security is whether they stop an attacker <b>now</b>. Build for security; let compliance be the evidence."],
+    ["08", "Simplex architecture?", "Unverified high-performance (AI) controller + simple <b>verified safety controller</b> + monitor that switches before the state leaves the recoverable envelope. Verify only the simple parts."],
+    ["08", "What's an assurance case?", "A structured argument (claims → sub-claims → <b>evidence</b>) that a system is acceptably safe or secure. It's often in GSN, and it makes reasoning and gaps reviewable."],
+    ["09", "What does Shor break vs. Grover weaken?", "<b>Shor:</b> RSA, DH, ECC, so all public-key key exchange and signatures. <b>Grover:</b> quadratic speedup on search, roughly halving symmetric key bits. AES-256 is fine."],
+    ["09", "NIST PQC standards (2024)?", "<b>FIPS 203 ML-KEM</b> (key encapsulation), <b>FIPS 204 ML-DSA</b> (signatures), <b>FIPS 205 SLH-DSA</b> (hash-based signatures). FN-DSA (Falcon) is next; HQC is a backup KEM."],
+    ["09", "Mosca's inequality?", "If <b>X + Y &gt; Z</b> (secrecy lifetime + migration time &gt; time to CRQC), you're already at risk because of harvest-now-decrypt-later."]
+  ];
+  const TITLES = { "01": "Machines", "02": "Security thinking", "03": "Cryptography", "04": "PKI & TLS", "05": "AppSec", "06": "AI", "07": "Organization", "08": "Autonomy", "09": "Quantum" };
+  const sel = FM.$("#fcFilter");
+  sel.innerHTML = `<option value="all">All chapters (${CARDS.length})</option>` + Object.entries(TITLES).map(([k, v]) => `<option value="${k}">${k} · ${v} (${CARDS.filter(c => c[0] === k).length})</option>`).join("");
+  let deck = [], i = 0, got = 0;
+  const card = FM.$("#fcCard");
+  function build(shuffle) {
+    deck = CARDS.filter(c => sel.value === "all" || c[0] === sel.value).slice();
+    if (shuffle) for (let k = deck.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [deck[k], deck[j]] = [deck[j], deck[k]]; }
+    i = 0; got = 0; renderCard();
+  }
+  function renderCard() {
+    card.classList.remove("flipped");
+    if (i >= deck.length) {
+      FM.$("#fcTag").textContent = "Round complete"; FM.$("#fcQ").textContent = `✓ ${got} cards cleared. Shuffle for another round.`; FM.$("#fcA").innerHTML = "Nice. Come back to the ones that took a second try.";
+      FM.$("#fcMeta").textContent = ""; return;
+    }
+    const c = deck[i];
+    setTimeout(() => { FM.$("#fcA").innerHTML = `<div>${c[2]}</div>`; }, 150);
+    FM.$("#fcTag").textContent = `${c[0]} · ${TITLES[c[0]]}`; FM.$("#fcQ").innerHTML = c[1];
+    FM.$("#fcMeta").textContent = `${got} cleared · ${deck.length - i} left`;
+  }
+  const flip = () => card.classList.toggle("flipped");
+  card.addEventListener("click", flip);
+  card.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); } });
+  FM.$("#fcGot").addEventListener("click", () => { if (i < deck.length) { got++; i++; renderCard(); } });
+  FM.$("#fcAgain").addEventListener("click", () => { if (i < deck.length) { const c = deck.splice(i, 1)[0]; deck.splice(Math.min(deck.length, i + 3), 0, c); renderCard(); } });
+  FM.$("#fcShuffle").addEventListener("click", () => build(true));
+  sel.addEventListener("change", () => build(true));
+  build(true);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assured Autonomy · Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/site.js"></script>
+<style>
+  #rtaCanvas { width: 100%; height: 260px; display: block; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin-top: 8px; }
+  .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .stat3 div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+  .stat3 b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .stat3 span { font-size: 12px; color: var(--ink-3); }
+  .loop text, .gsn text { font-family: Inter, system-ui, sans-serif; }
+</style>
+</head>
+<body data-page="autonomy">
+<div id="progress"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div>
+    <div class="topbar" id="topbar"></div>
+    <main>
+      <article class="page">
+        <div class="eyebrow">Chapter 08 · Frontier · current course</div>
+        <h1>Assured autonomy</h1>
+        <p class="dek">Everything so far assumed a human decides what the system does. Autonomous systems (drones, vehicles, robots, and now AI agents) decide for themselves, often with a neural network in the loop that nobody can fully inspect. How do you trust that?</p>
+        <div class="meta"><span id="readTime"></span><span>·</span><div class="chips"><span class="chip">Assured Autonomy (Fall 2026)</span><span class="chip">AI for Cybersecurity</span></div></div>
+
+        <div class="box note"><span class="label">Living chapter</span><p>I'm taking this course now. This chapter is written from where the field stands, and I should revise it with what the course emphasizes as the semester goes on.</p></div>
+
+        <div class="core"><span class="label">Core idea</span>
+          You can't prove a neural network is always right. So <strong>you don't trust the model; you trust the architecture around it.</strong> Define what “safe” means, verify what you can, bound what you can't with runtime monitors and simple, verifiable fallbacks, and tie the evidence together in an explicit argument for why the system is safe enough.
+        </div>
+
+        <h2><span class="h-num">8.1</span>Why autonomy is hard to assure</h2>
+        <p>Traditional software assurance works by specifying behavior and testing or proving the code meets it. Learning-enabled autonomy breaks that in three ways:</p>
+        <ul>
+          <li><strong>The input space can't be enumerated.</strong> A camera sees effectively infinite scenes. Testing samples a vanishing fraction.</li>
+          <li><strong>The behavior isn't written down.</strong> A neural network's decision logic is millions of learned weights, not reviewable rules. Chapter 01's “stack of promises” has a layer with no explicit promise.</li>
+          <li><strong>The world shifts.</strong> Fog, a new road layout, or a sensor aging all put the system outside its training distribution, often without it knowing.</li>
+        </ul>
+        <p>Add an adversary and it gets worse. Chapter 06's evasion attacks become physical: stickers that make a stop sign read as a speed limit, GPS spoofing, and LiDAR spoofing. For autonomous systems, <strong>safety and security converge</strong>, because an attacker's goal is often to make the system do something unsafe.</p>
+
+        <figure class="loop">
+          <svg viewBox="0 0 720 200" role="img" aria-label="Sense-decide-act loop with attack points">
+            <defs><marker id="a8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--ink-3)"/></marker></defs>
+            <g font-size="14" text-anchor="middle">
+              <rect x="30" y="40" width="160" height="64" rx="12" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="110" y="70" font-weight="700" fill="var(--ink)">Sense</text><text x="110" y="90" font-size="12" fill="var(--ink-3)">camera · LiDAR · GPS</text>
+              <rect x="280" y="40" width="160" height="64" rx="12" fill="var(--violet-soft)" stroke="var(--violet)"/><text x="360" y="70" font-weight="700" fill="var(--ink)">Decide</text><text x="360" y="90" font-size="12" fill="var(--ink-3)">perception + planning (ML)</text>
+              <rect x="530" y="40" width="160" height="64" rx="12" fill="var(--green-soft)" stroke="var(--green)"/><text x="610" y="70" font-weight="700" fill="var(--ink)">Act</text><text x="610" y="90" font-size="12" fill="var(--ink-3)">steer · brake · call tool</text>
+              <path d="M190 72 h86 M440 72 h86" stroke="var(--ink-3)" stroke-width="2" marker-end="url(#a8)"/>
+              <path d="M610 104 v40 H110 v-38" stroke="var(--ink-3)" stroke-width="2" fill="none" marker-end="url(#a8)" stroke-dasharray="5 5"/><text x="360" y="162" font-size="12" fill="var(--ink-3)">environment responds</text>
+              <g fill="var(--red)" font-size="12" font-weight="600"><text x="110" y="28">spoofing · jamming</text><text x="360" y="28">adversarial inputs · OOD</text><text x="610" y="28">unsafe or hijacked action</text></g>
+            </g>
+          </svg>
+        </figure>
+
+        <h2><span class="h-num">8.2</span>The assurance toolkit</h2>
+        <h3>1 · Specify: what does “safe” mean?</h3>
+        <p>Before anything can be verified, it has to be stated. Safety <strong>properties</strong> (“never closer than 2 m to a pedestrian,” “never leave the geofence”) and an <strong>operational design domain (ODD)</strong>, the conditions the system is designed for (daylight, highways, under 65 mph). Much of assurance is admitting what's out of scope and detecting when you've left it.</p>
+        <h3>2 · Verify: prove what you can</h3>
+        <p><strong>Formal methods</strong> (model checking, theorem proving) prove properties over <em>all</em> behaviors of a model, which is exhaustive but hard to scale. <strong>Neural network verification</strong> tools (for example, Marabou or α,β-CROWN) can prove bounded properties, such as “no perturbation within ε of this input changes the classification,” for small networks and regions. <strong>Simulation and scenario-based testing</strong> cover the rest, with <em>falsification</em> actively searching for inputs that break the system (fuzzing for autonomy).</p>
+        <h3>3 · Bound at runtime: the Simplex architecture</h3>
+        <p>This is the idea I'd put on a slide. Run the high-performance, unverifiable AI controller <em>and</em> a simple, verifiable safety controller side by side. A <strong>monitor</strong> watches the system state. As long as it's safely inside a recoverable envelope, the AI drives. When the AI's actions would push it toward the edge, the monitor switches to the safety controller before a violation happens. You get the AI's performance most of the time and a proof-backed guarantee all of the time. This is <strong>runtime assurance (RTA)</strong>, used in aviation (ASTM F3269 covers it for unmanned aircraft) and in research on autonomous vehicles.</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Simplex runtime assurance: lane keeping</b><span class="hint">crank up the AI's error and flip RTA on and off</span></div>
+          <div class="lab-body">
+            <div class="row">
+              <div class="seg" id="rtaMode"><button type="button" data-v="on" aria-pressed="true">RTA on</button><button type="button" data-v="off" aria-pressed="false">AI only</button></div>
+              <button class="btn" id="rtaPause" type="button">Pause</button>
+              <button class="btn" id="rtaAttack" type="button">Inject adversarial drift</button>
+            </div>
+            <label for="rtaNoise">AI controller erratic-ness: <span id="rtaNoiseOut" class="mono"></span></label>
+            <input type="range" id="rtaNoise" min="0" max="100" value="75">
+            <canvas id="rtaCanvas" width="1200" height="520"></canvas>
+            <div class="legend"><span><i style="background:var(--violet)"></i>AI controller active</span><span><i style="background:var(--green)"></i>Safety controller active</span><span><i style="background:var(--amber);height:10px;opacity:.35"></i>Switching envelope</span><span><i style="background:var(--red)"></i>Lane boundary (violation)</span></div>
+            <div class="stat3"><div><b id="rtaViol">0</b><span>lane violations</span></div><div><b id="rtaShare">100%</b><span>time the AI is driving</span></div><div><b id="rtaSw">0</b><span>switches to safety controller</span></div></div>
+          </div>
+          <div class="lab-foot">The monitor predicts one step ahead: if position plus velocity × lookahead crosses the envelope, it switches. The safety controller is dumb, slow, and verifiable. That's the point: you only need to prove the <em>simple</em> parts.</div>
+        </div>
+
+        <h3>4 · Argue: the assurance case</h3>
+        <p>No single technique covers everything, so the evidence is assembled into an <strong>assurance case</strong>: a structured argument that a top-level claim (“the system is acceptably safe in its ODD”) is supported by sub-claims, each backed by evidence such as test results, proofs, and analyses. The usual notation is GSN (Goal Structuring Notation). The value is the same as a threat model: it makes the <em>reasoning</em> reviewable and exposes where the evidence is thin. Standards like UL 4600 (autonomous products), ISO 26262 (functional safety), and ISO 21448/SOTIF (hazards from a function's limitations, not failures) are built around this style of argument.</p>
+
+        <figure class="gsn">
+          <svg viewBox="0 0 720 250" role="img" aria-label="Example assurance case tree">
+            <g font-size="12.5" text-anchor="middle">
+              <path d="M360 54 v16 M360 94 v14 M120 108 h480 M120 108 v14 M360 108 v14 M600 108 v14" stroke="var(--ink-3)" fill="none"/>
+              <path d="M120 172 v18 M360 172 v18 M600 172 v18" stroke="var(--ink-3)"/>
+              <rect x="210" y="10" width="300" height="44" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="30" font-weight="700" fill="var(--ink)">G1: Lane-keeping is acceptably safe</text><text x="360" y="46" fill="var(--ink-3)">within ODD (highway, daylight, dry)</text>
+              <path d="M280 70 h172 l-12 24 h-172 z" fill="var(--violet-soft)" stroke="var(--violet)"/><text x="360" y="87" fill="var(--ink)" font-size="11.5">S1: argue over hazards</text>
+              
+              <rect x="20" y="122" width="200" height="50" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="120" y="143" font-weight="600" fill="var(--ink)">G2: Lane departures</text><text x="120" y="160" fill="var(--ink)">are prevented</text>
+              <rect x="260" y="122" width="200" height="50" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="143" font-weight="600" fill="var(--ink)">G3: ODD exit is detected</text><text x="360" y="160" fill="var(--ink)">and handed off</text>
+              <rect x="500" y="122" width="200" height="50" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="600" y="143" font-weight="600" fill="var(--ink)">G4: Sensor spoofing</text><text x="600" y="160" fill="var(--ink)">is detected</text>
+              <ellipse cx="120" cy="218" rx="54" ry="27" fill="var(--green-soft)" stroke="var(--green)"/><text x="120" y="214" fill="var(--ink)" font-size="11">RTA proof +</text><text x="120" y="228" fill="var(--ink)" font-size="11">sim results</text>
+              <ellipse cx="360" cy="218" rx="54" ry="27" fill="var(--green-soft)" stroke="var(--green)"/><text x="360" y="214" fill="var(--ink)" font-size="11">OOD monitor</text><text x="360" y="228" fill="var(--ink)" font-size="11">test report</text>
+              <ellipse cx="600" cy="218" rx="54" ry="27" fill="var(--red-soft)" stroke="var(--red)" stroke-dasharray="4 3"/><text x="600" y="214" fill="var(--red)" font-size="11" font-weight="700">evidence</text><text x="600" y="228" fill="var(--red)" font-size="11" font-weight="700">missing</text>
+            </g>
+          </svg>
+          <figcaption>Goals (rectangles), strategy (parallelogram), evidence (circles). The dashed red circle is exactly what an assurance case is for: making the gap visible.</figcaption>
+        </figure>
+
+        <h2><span class="h-num">8.3</span>Why this matters beyond robots: AI agents</h2>
+        <p>LLM agents that browse, write code, and call APIs are autonomous systems too: sense (read context), decide (the model), act (tools). The assurance playbook transfers almost directly, and it's where I expect this course to pay off in AppSec work:</p>
+        <ul>
+          <li><strong>ODD → scope:</strong> define which tasks and data the agent is designed for, and refuse or escalate outside that.</li>
+          <li><strong>Simplex → guardrails:</strong> a deterministic policy layer between the model and its tools that allowlists actions, enforces the user's permissions, and requires approval for irreversible steps. The model proposes; simple, verifiable code disposes.</li>
+          <li><strong>Runtime monitors → observability:</strong> log and rate-limit tool calls, and detect anomalous action sequences.</li>
+          <li><strong>Assurance case → security review:</strong> an explicit argument for why this agent can't be driven into harm by prompt injection, and what evidence supports it.</li>
+        </ul>
+
+        <div class="box breaks"><span class="label">Where it breaks</span>
+          <ul>
+            <li><strong>Unknown unknowns:</strong> testing and even the ODD are defined by what designers imagined. The dangerous cases are the ones nobody did.</li>
+            <li><strong>Monitors are software too:</strong> a runtime monitor that trusts spoofed sensor data switches on the wrong facts. The trust boundary moves; it doesn't vanish.</li>
+            <li><strong>Assurance cases as paperwork:</strong> an argument written to justify a decision already made is confirmation bias with diagrams.</li>
+            <li><strong>Automation complacency:</strong> humans “in the loop” stop paying attention when the system is usually right.</li>
+          </ul>
+        </div>
+
+        <div class="box job"><span class="label">On the job (AppSec)</span>
+          <ul>
+            <li>Reviewing <strong>agentic AI features</strong> with a runtime-assurance mindset: what's the safety envelope, and what enforces it outside the model?</li>
+            <li>Designing <strong>deterministic guardrails</strong> (policy engines, allowlists, approval gates) as the verifiable part of an unverifiable system.</li>
+            <li>Writing <strong>security assurance arguments</strong> for high-risk launches, showing claims, evidence, and known gaps.</li>
+            <li>Roles in <strong>autonomous vehicles, drones, defense, and robotics</strong> where safety and security engineering overlap.</li>
+          </ul>
+        </div>
+
+        <div class="box sixty"><span class="label">Say it in 60 seconds</span>
+          <p>“Assured autonomy is about trusting systems that decide for themselves, usually with a neural network you can't fully verify. The answer is to not trust the model and to trust the architecture instead. You specify what safe means and the operating domain, verify what you can with formal methods and testing, and bound the rest at runtime. The Simplex architecture is my favorite example: an AI controller runs normally, a monitor watches a safety envelope, and a simple verified controller takes over before anything unsafe happens. Then you tie the evidence together in an assurance case that makes the gaps visible. I think this maps directly to AI agents: the model proposes, and deterministic, verifiable guardrails decide what actually executes.”</p>
+        </div>
+
+        <h2>Check yourself</h2>
+        <div class="qs">
+          <details class="q"><summary>What is the Simplex architecture, and why does it work?</summary><div class="a"><p>A complex, high-performance controller runs alongside a simple, verified safety controller. A decision module switches to the safety controller when the state approaches the boundary of a region from which safe recovery is guaranteed. It works because you only need to verify the simple parts (safety controller plus switching logic), not the complex one.</p></div></details>
+          <details class="q"><summary>What is an operational design domain?</summary><div class="a"><p>The specific conditions a system is designed to operate in, such as geography, weather, speed, and time of day. Safety claims are only made within the ODD, so detecting ODD exit and handing off safely is itself a safety requirement.</p></div></details>
+          <details class="q"><summary>How is assuring an AI system different from testing traditional software?</summary><div class="a"><p>The behavior is learned rather than specified, the input space can't be enumerated, and performance degrades under distribution shift in ways that are hard to predict. So assurance leans on runtime monitoring, bounded verification, out-of-distribution detection, and structured arguments, rather than only requirements-based testing.</p></div></details>
+          <details class="q"><summary>How do safety and security interact in autonomous systems?</summary><div class="a"><p>A security attack (spoofed GPS, an adversarial patch, a hijacked command) can directly cause a safety hazard, and safety mechanisms can be attack surface (tricking a monitor into triggering a fallback as denial of service). They need joint analysis, often called security-informed safety.</p></div></details>
+        </div>
+
+        <div class="chapter-end" id="chapterEnd"></div>
+      </article>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  const cv = FM.$("#rtaCanvas"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, N = 300;
+  let rta = true, paused = false, attack = 0;
+  let y = 0, v = 0, hist = [], viol = 0, aiSteps = 0, steps = 0, switches = 0, wasSafety = false, t = 0;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  let seed = 7; const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const gauss = () => { let s = 0; for (let i = 0; i < 6; i++) s += rnd(); return s - 3; };
+  const noiseEl = FM.$("#rtaNoise");
+  const ENV = 0.62, LOOK = 6;
+  function step() {
+    const noise = +noiseEl.value / 100;
+    // AI: decent tracking + noise + occasional bursts + adversarial drift
+    let uAI = -0.03 * y - 0.25 * v + noise * 0.1 * gauss() + (rnd() < noise * 0.04 ? (rnd() - .5) * 0.9 * noise : 0) + attack * 0.05;
+    const predicted = y + v * LOOK + uAI * LOOK;
+    let useSafety = rta && (Math.abs(predicted) > ENV || (wasSafety && Math.abs(y) > 0.25));
+    const uSafe = -0.06 * y - 0.5 * v;
+    const u = useSafety ? uSafe : uAI;
+    if (useSafety && !wasSafety) switches++;
+    wasSafety = useSafety;
+    v = (v + u) * 0.9; y += v;
+    y = Math.max(-1.4, Math.min(1.4, y));
+    if (Math.abs(y) > 1) { viol++; y *= 0.9; v *= -0.3; }
+    steps++; if (!useSafety) aiSteps++;
+    if (attack > 0) attack = Math.max(0, attack - 0.004);
+    hist.push([y, useSafety]); if (hist.length > N) hist.shift();
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    const my = h => H / 2 - h * (H / 2 - 40);
+    ctx.fillStyle = css("--amber"); ctx.globalAlpha = .12;
+    ctx.fillRect(0, my(1), W, my(ENV) - my(1)); ctx.fillRect(0, my(-ENV), W, my(-1) - my(-ENV)); ctx.globalAlpha = 1;
+    ctx.strokeStyle = css("--red"); ctx.lineWidth = 4; ctx.setLineDash([]);
+    [1, -1].forEach(b => { ctx.beginPath(); ctx.moveTo(0, my(b)); ctx.lineTo(W, my(b)); ctx.stroke(); });
+    ctx.strokeStyle = css("--line"); ctx.lineWidth = 2; ctx.setLineDash([16, 14]); ctx.beginPath(); ctx.moveTo(0, my(0)); ctx.lineTo(W, my(0)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.lineWidth = 5; ctx.lineCap = "round";
+    for (let i = 1; i < hist.length; i++) {
+      ctx.strokeStyle = hist[i][1] ? css("--green") : css("--violet");
+      ctx.beginPath(); ctx.moveTo((i - 1) / N * W, my(hist[i - 1][0])); ctx.lineTo(i / N * W, my(hist[i][0])); ctx.stroke();
+    }
+    if (hist.length) { const last = hist[hist.length - 1]; ctx.fillStyle = css("--ink"); ctx.beginPath(); ctx.arc((hist.length - 1) / N * W, my(last[0]), 11, 0, 7); ctx.fill(); }
+    ctx.fillStyle = css("--ink-3"); ctx.font = "600 22px Inter, system-ui, sans-serif";
+    ctx.fillText("lane edge", 12, my(1) - 10); ctx.fillText("lane edge", 12, my(-1) + 28);
+    if (attack > 0.05) { ctx.fillStyle = css("--red"); ctx.fillText("⚠ adversarial drift active", W - 330, 34); }
+    FM.$("#rtaViol").textContent = viol;
+    FM.$("#rtaShare").textContent = steps ? Math.round(aiSteps / steps * 100) + "%" : "100%";
+    FM.$("#rtaSw").textContent = switches;
+    FM.$("#rtaNoiseOut").textContent = noiseEl.value + "%";
+  }
+  function reset() { y = 0; v = 0; hist = []; viol = 0; aiSteps = 0; steps = 0; switches = 0; wasSafety = false; }
+  let last = 0;
+  function loop(ts) {
+    if (!paused && ts - last > 40) { step(); draw(); last = ts; }
+    requestAnimationFrame(loop);
+  }
+  FM.seg(FM.$("#rtaMode"), v => { rta = v === "on"; reset(); });
+  FM.$("#rtaPause").addEventListener("click", e => { paused = !paused; e.target.textContent = paused ? "Resume" : "Pause"; });
+  FM.$("#rtaAttack").addEventListener("click", () => { attack = (rnd() < .5 ? 1 : -1); });
+  noiseEl.addEventListener("input", () => { FM.$("#rtaNoiseOut").textContent = noiseEl.value + "%"; });
+  for (let i = 0; i < 120; i++) step();
+  draw();
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { paused = true; FM.$("#rtaPause").textContent = "Resume"; }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

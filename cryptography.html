@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cryptography · Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/site.js"></script>
+<style>
+  .bits { display: grid; grid-template-columns: repeat(32, 1fr); gap: 2px; margin-top: 10px; }
+  .bits i { aspect-ratio: 1; border-radius: 2px; background: var(--line); }
+  .bits i.d { background: var(--accent); }
+  .ecb { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; text-align: center; }
+  .ecb canvas { width: 100%; image-rendering: pixelated; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+  .ecb b { display: block; font-size: 13px; margin-top: 6px; }
+  .ecb span { font-size: 12px; color: var(--ink-3); }
+  @media (max-width: 560px) { .ecb { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body data-page="crypto">
+<div id="progress"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div>
+    <div class="topbar" id="topbar"></div>
+    <main>
+      <article class="page">
+        <div class="eyebrow">Chapter 03 · Trust</div>
+        <h1>Cryptography</h1>
+        <p class="dek">Cryptology was the most mathematical course in the degree. What's left after the modular arithmetic fades: a clear sense of what each primitive promises, what it doesn't, and why real-world crypto almost never fails at the math.</p>
+        <div class="meta"><span id="readTime"></span><span>·</span><div class="chips"><span class="chip">Cryptology</span><span class="chip">Foundations of Algorithms</span></div></div>
+
+        <div class="core"><span class="label">Core idea</span>
+          Cryptography doesn't make a security problem go away. It <strong>turns a big problem (protect all this data) into a small one (protect this key)</strong>. The small problem is still a problem, and that's where crypto actually fails.
+        </div>
+
+        <h2><span class="h-num">3.1</span>The toolbox, by what it guarantees</h2>
+        <p>The most useful way to hold crypto in your head isn't by algorithm. It's by <em>property</em>. When someone says “we encrypt it,” the right question is: <em>which guarantee did you need, and does that primitive actually give it?</em></p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>I need…</th><th>Primitive</th><th>Use today</th><th>Doesn't give you</th></tr></thead>
+          <tbody>
+            <tr><td><b>Confidentiality</b> (shared key)</td><td>Symmetric cipher</td><td>AES-256, ChaCha20</td><td>Integrity, unless it's an AEAD mode</td></tr>
+            <tr><td><b>Confidentiality + integrity</b></td><td>AEAD</td><td>AES-GCM, ChaCha20-Poly1305</td><td>Safety under nonce reuse (GCM)</td></tr>
+            <tr><td><b>Fingerprint / integrity</b> (no key)</td><td>Hash</td><td>SHA-256, SHA-3</td><td>Authenticity: anyone can recompute it</td></tr>
+            <tr><td><b>Integrity + authenticity</b> (shared key)</td><td>MAC</td><td>HMAC-SHA256</td><td>Non-repudiation: both sides hold the key</td></tr>
+            <tr><td><b>Agree on a key</b> over an open channel</td><td>Key exchange</td><td>ECDH (X25519), ML-KEM</td><td>Knowing <em>who</em> you agreed with (needs PKI)</td></tr>
+            <tr><td><b>Authenticity + non-repudiation</b></td><td>Digital signature</td><td>Ed25519, ECDSA, RSA-PSS, ML-DSA</td><td>Confidentiality</td></tr>
+            <tr><td><b>Store passwords</b></td><td>Slow, salted KDF</td><td>Argon2id, bcrypt, scrypt</td><td>Anything, if you use plain SHA-256 instead</td></tr>
+            <tr><td><b>Unpredictability</b></td><td>CSPRNG</td><td>OS randomness (<code>/dev/urandom</code>)</td><td>Safety if you use <code>Math.random()</code></td></tr>
+          </tbody>
+        </table></div>
+
+        <h2><span class="h-num">3.2</span>Symmetric vs. asymmetric, and why we use both</h2>
+        <p><strong>Symmetric</strong> crypto (one shared key) is fast and strong but has a distribution problem: how do two strangers get the same secret? <strong>Asymmetric</strong> crypto (public/private key pairs) solves distribution with math that's easy one way and hard the other (Chapter 01's hardness again), but it's slow. So real protocols are <strong>hybrid</strong>: asymmetric crypto agrees on or wraps a symmetric key, and the symmetric key protects the bulk data. TLS, Signal, PGP, and cloud KMS “envelope encryption” all follow this pattern.</p>
+
+        <figure>
+          <svg viewBox="0 0 720 240" role="img" aria-label="Hybrid encryption: asymmetric key agreement, symmetric bulk encryption, signatures for identity">
+            <g font-family="Inter, sans-serif" font-size="13">
+              <rect x="10" y="20" width="200" height="200" rx="12" fill="var(--blue-soft)" stroke="var(--blue)"/>
+              <text x="110" y="46" text-anchor="middle" font-weight="700" fill="var(--blue)" font-size="14">1 · Identity</text>
+              <text x="110" y="78" text-anchor="middle" fill="var(--ink)">Signatures + certificates</text>
+              <text x="110" y="100" text-anchor="middle" fill="var(--ink-3)">“this public key</text>
+              <text x="110" y="118" text-anchor="middle" fill="var(--ink-3)">really is the bank's”</text>
+              <text x="110" y="170" text-anchor="middle" fill="var(--ink-2)" font-family="JetBrains Mono, monospace" font-size="12">ECDSA / RSA / ML-DSA</text>
+              <text x="110" y="196" text-anchor="middle" fill="var(--ink-3)" font-size="12">→ Chapter 04</text>
+
+              <rect x="260" y="20" width="200" height="200" rx="12" fill="var(--violet-soft)" stroke="var(--violet)"/>
+              <text x="360" y="46" text-anchor="middle" font-weight="700" fill="var(--violet)" font-size="14">2 · Key agreement</text>
+              <text x="360" y="78" text-anchor="middle" fill="var(--ink)">Asymmetric (slow, rare)</text>
+              <text x="360" y="100" text-anchor="middle" fill="var(--ink-3)">both sides derive the</text>
+              <text x="360" y="118" text-anchor="middle" fill="var(--ink-3)">same secret, never sent</text>
+              <text x="360" y="170" text-anchor="middle" fill="var(--ink-2)" font-family="JetBrains Mono, monospace" font-size="12">X25519 / ML-KEM</text>
+              <text x="360" y="196" text-anchor="middle" fill="var(--ink-3)" font-size="12">→ quantum target (Ch. 09)</text>
+
+              <rect x="510" y="20" width="200" height="200" rx="12" fill="var(--green-soft)" stroke="var(--green)"/>
+              <text x="610" y="46" text-anchor="middle" font-weight="700" fill="var(--green)" font-size="14">3 · Bulk data</text>
+              <text x="610" y="78" text-anchor="middle" fill="var(--ink)">Symmetric AEAD (fast)</text>
+              <text x="610" y="100" text-anchor="middle" fill="var(--ink-3)">every byte encrypted</text>
+              <text x="610" y="118" text-anchor="middle" fill="var(--ink-3)">and tamper-evident</text>
+              <text x="610" y="170" text-anchor="middle" fill="var(--ink-2)" font-family="JetBrains Mono, monospace" font-size="12">AES-GCM / ChaCha20</text>
+              <text x="610" y="196" text-anchor="middle" fill="var(--ink-3)" font-size="12">→ quantum-resistant</text>
+              <path d="M212 120 h44 M462 120 h44" stroke="var(--ink-3)" stroke-width="2" marker-end="url(#a3)"/>
+              <defs><marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--ink-3)"/></marker></defs>
+            </g>
+          </svg>
+          <figcaption>Every secure channel you use is this pipeline. Remember it and you can reason about TLS, SSH, Signal, and VPNs.</figcaption>
+        </figure>
+
+        <h2><span class="h-num">3.3</span>What “good” looks like: the avalanche</h2>
+        <p>A good hash or cipher behaves like a random function: change one input bit and about <em>half</em> the output bits flip, unpredictably. That's what makes it impossible to work backwards or nudge an output toward a target. Change one character below and count.</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>SHA-256 avalanche effect</b><span class="hint">live, using your browser's Web Crypto API</span></div>
+          <div class="lab-body">
+            <div class="grid2">
+              <div><label for="hA">Input A</label><input type="text" id="hA" value="transfer $100 to Alice" spellcheck="false"></div>
+              <div><label for="hB">Input B</label><input type="text" id="hB" value="transfer $900 to Alice" spellcheck="false"></div>
+            </div>
+            <div class="out" id="hOut" style="margin-top:12px"></div>
+            <div class="bits" id="hBits" aria-label="Bits that differ between the two hashes"></div>
+            <p id="hSum" style="margin:10px 0 0"></p>
+          </div>
+          <div class="lab-foot">A hash alone is <em>not</em> authentication. An attacker who changes the message just recomputes the hash. For that you need a key: an HMAC or a signature.</div>
+        </div>
+
+        <h2><span class="h-num">3.4</span>Strong algorithm, wrong use: the ECB penguin</h2>
+        <p>AES is unbroken. You can still use it in a way that leaks everything. In <strong>ECB mode</strong> each 16-byte block is encrypted independently, so identical plaintext blocks produce identical ciphertext blocks. The structure of the data shows straight through the encryption. Below, the same image is encrypted with <em>real AES-128</em> in your browser, two ways.</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>ECB vs. CTR mode</b><span class="hint">same key, same image, real AES</span></div>
+          <div class="lab-body">
+            <div class="ecb">
+              <div><canvas id="cPlain" width="96" height="96"></canvas><b>Plaintext</b><span>raw pixels</span></div>
+              <div><canvas id="cEcb" width="96" height="96"></canvas><b>AES-ECB</b><span class="pill bad" style="margin-top:4px">leaks structure</span></div>
+              <div><canvas id="cCtr" width="96" height="96"></canvas><b>AES-CTR</b><span class="pill ok" style="margin-top:4px">looks random</span></div>
+            </div>
+            <div class="row" style="margin:14px 0 0"><button class="btn" id="ecbNew" type="button">New random key</button><span class="small" id="ecbNote" style="font-family:var(--sans)"></span></div>
+          </div>
+          <div class="lab-foot">The lesson generalizes. Crypto libraries hand you sharp tools, so the safe move is a high-level API that picks the mode for you (libsodium, Google Tink, or your platform's AEAD). Never reach for raw block-cipher primitives.</div>
+        </div>
+
+        <h2><span class="h-num">3.5</span>The real problem: keys</h2>
+        <p>Once the algorithm is sound, every serious question is about keys. Where are they generated, and with what randomness? Where do they live? Who and what can use them? How are they rotated, and how are they revoked if they leak? That's <strong>key management</strong>, and it's where the industry has converged on a few patterns:</p>
+        <ul>
+          <li><strong>HSMs and cloud KMS:</strong> the key never leaves tamper-resistant hardware. You send data in and get results out, and every use is logged.</li>
+          <li><strong>Envelope encryption:</strong> a data key encrypts the data, a master key in KMS encrypts the data key. Rotating the master doesn't mean re-encrypting petabytes.</li>
+          <li><strong>Secrets managers:</strong> Vault, AWS Secrets Manager, and the like replace keys in config files and environment variables, with rotation and audit.</li>
+          <li><strong>Crypto agility:</strong> design so the algorithm can be swapped without a rewrite. This was an abstract virtue until post-quantum migration made it a deadline (Chapter 09).</li>
+        </ul>
+
+        <div class="box breaks"><span class="label">Where it breaks</span>
+          <ul>
+            <li><strong>Hard-coded or committed keys:</strong> the most common crypto failure by far. No math required.</li>
+            <li><strong>Nonce reuse:</strong> reusing a nonce with AES-GCM leaks the XOR of plaintexts and lets attackers forge messages. It's catastrophic, not gradual.</li>
+            <li><strong>Bad randomness:</strong> Debian's 2008 OpenSSL bug cut the keyspace to about 32,768 possible keys per key type. Every key generated on those systems for nearly two years was guessable.</li>
+            <li><strong>Fast hashes for passwords:</strong> SHA-256 is designed to be fast, and GPUs try billions per second. Passwords need slow, salted, memory-hard functions.</li>
+            <li><strong>Side channels:</strong> comparing MACs with <code>==</code> leaks timing, so use constant-time comparison. Padding oracles turned error messages into decryption.</li>
+            <li><strong>Rolling your own:</strong> the rule isn't “never write crypto code.” It's “never invent a scheme or compose primitives yourself when a vetted construction exists.”</li>
+          </ul>
+        </div>
+
+        <div class="box job"><span class="label">On the job (AppSec)</span>
+          <ul>
+            <li><strong>Code review:</strong> flag <code>ECB</code>, <code>MD5</code>/<code>SHA1</code> for security use, static IVs, <code>Math.random()</code> for tokens, <code>==</code> on MACs, and homemade JWT verification.</li>
+            <li><strong>Password storage:</strong> Argon2id or bcrypt with a sensible cost. Know the OWASP Password Storage Cheat Sheet exists.</li>
+            <li><strong>Secrets:</strong> secret scanning in CI (gitleaks, GitHub push protection), rotation runbooks, and responding when a key leaks.</li>
+            <li><strong>OWASP A04:2025, Cryptographic Failures:</strong> this whole chapter is that category.</li>
+          </ul>
+        </div>
+
+        <div class="box sixty"><span class="label">Say it in 60 seconds</span>
+          <p>“I think about crypto by property: confidentiality, integrity, authenticity, non-repudiation. Then I ask which primitive actually provides the one we need. A hash isn't authentication, and encryption without an AEAD mode isn't integrity. Real systems are hybrid: asymmetric crypto establishes a key, symmetric AEAD protects the data, and signatures plus certificates tie keys to identities. The math is almost never what breaks. It's misuse, like ECB mode, nonce reuse, fast password hashes, and bad randomness, and above all key management. Crypto turns a data-protection problem into a key-protection problem.”</p>
+        </div>
+
+        <h2>Check yourself</h2>
+        <div class="qs">
+          <details class="q"><summary>What's the difference between hashing, encryption, and encoding?</summary><div class="a"><p><strong>Encoding</strong> (Base64) is reversible by anyone and provides no security. <strong>Encryption</strong> is reversible only with a key and provides confidentiality. <strong>Hashing</strong> is one-way and provides a fingerprint for integrity. Add a key (HMAC) and you get authenticity too.</p></div></details>
+          <details class="q"><summary>Why can't you just SHA-256 passwords with a salt?</summary><div class="a"><p>A salt stops precomputed rainbow tables, but SHA-256 is <em>fast</em>, so an attacker with a GPU can still try billions of guesses per second against each salted hash. Password hashing should be deliberately slow and memory-hard (Argon2id, scrypt, bcrypt) to make each guess expensive.</p></div></details>
+          <details class="q"><summary>MAC vs. digital signature: when do you need which?</summary><div class="a"><p>A MAC uses a shared symmetric key, so it's fast and fine when both parties trust each other (like webhook verification). But either party could have produced it, so there's no non-repudiation. A signature uses a private key only the signer holds, so anyone with the public key can verify it, and the signer can't deny it. Use signatures for software updates, certificates, and legal records.</p></div></details>
+          <details class="q"><summary>What is forward secrecy and why does TLS 1.3 require it?</summary><div class="a"><p>Each session uses ephemeral key-exchange keys that are thrown away afterward. If the server's long-term private key is stolen later, past recorded sessions still can't be decrypted. TLS 1.3 removed static RSA key exchange for exactly this reason.</p></div></details>
+        </div>
+
+        <div class="chapter-end" id="chapterEnd"></div>
+      </article>
+    </main>
+  </div>
+</div>
+<script>
+(async function () {
+  const hasCrypto = !!(window.crypto && crypto.subtle);
+  const enc = new TextEncoder();
+  const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+
+  /* ---- avalanche ---- */
+  const A = FM.$("#hA"), B = FM.$("#hB"), out = FM.$("#hOut"), bitsEl = FM.$("#hBits"), sum = FM.$("#hSum");
+  async function renderHash() {
+    if (!hasCrypto) { out.textContent = "Web Crypto isn't available here. Open the site over https (GitHub Pages) to run this lab."; return; }
+    const [ha, hb] = await Promise.all([crypto.subtle.digest("SHA-256", enc.encode(A.value)), crypto.subtle.digest("SHA-256", enc.encode(B.value))]);
+    const a = new Uint8Array(ha), b = new Uint8Array(hb);
+    let diff = 0, cells = "";
+    for (let i = 0; i < 32; i++) for (let j = 7; j >= 0; j--) {
+      const d = ((a[i] >> j) & 1) !== ((b[i] >> j) & 1); if (d) diff++; cells += `<i class="${d ? "d" : ""}"></i>`;
+    }
+    out.innerHTML = `A: ${hex(ha)}\nB: ${hex(hb)}`;
+    bitsEl.innerHTML = cells;
+    sum.innerHTML = A.value === B.value
+      ? `<span class="pill ok">Identical</span> Same input, same hash, every time. That determinism is what makes hashes useful as fingerprints.`
+      : `<span class="pill warn">${diff} / 256 bits differ (${(diff / 2.56).toFixed(0)}%)</span> The inputs differ slightly; the outputs are unrelated. Each orange square is a flipped bit.`;
+  }
+  A.addEventListener("input", renderHash); B.addEventListener("input", renderHash); renderHash();
+
+  /* ---- ECB vs CTR ---- */
+  const W = 96, H = 96;
+  const plainC = FM.$("#cPlain"), ecbC = FM.$("#cEcb"), ctrC = FM.$("#cCtr"), note = FM.$("#ecbNote");
+  function drawPlain() {
+    const ctx = plainC.getContext("2d");
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#1d2126";
+    // padlock: shackle + body
+    ctx.lineWidth = 10; ctx.strokeStyle = "#1d2126";
+    ctx.beginPath(); ctx.arc(48, 40, 18, Math.PI, 0); ctx.lineTo(66, 48); ctx.moveTo(30, 40); ctx.lineTo(30, 48); ctx.stroke();
+    ctx.fillRect(18, 48, 60, 40);
+    ctx.fillStyle = "#b4441f"; ctx.fillRect(42, 58, 12, 20);
+    // quantize to a few flat colors so blocks repeat exactly
+    const img = ctx.getImageData(0, 0, W, H);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const lum = d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11;
+      const v = lum > 200 ? 255 : lum < 60 ? 29 : 150; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    // grayscale bytes: 1 byte per pixel
+    const bytes = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) bytes[i] = d[i * 4];
+    return bytes;
+  }
+  function paint(canvas, bytes) {
+    const ctx = canvas.getContext("2d"), img = ctx.createImageData(W, H);
+    for (let i = 0; i < W * H; i++) { const v = bytes[i]; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; }
+    ctx.putImageData(img, 0, 0);
+  }
+  const plainBytes = drawPlain();
+  async function encryptAll() {
+    if (!hasCrypto) { note.textContent = "Needs Web Crypto (https)."; return; }
+    const raw = crypto.getRandomValues(new Uint8Array(16));
+    const kCbc = await crypto.subtle.importKey("raw", raw, "AES-CBC", false, ["encrypt"]);
+    const kCtr = await crypto.subtle.importKey("raw", raw, "AES-CTR", false, ["encrypt"]);
+    // ECB emulated block-by-block: AES-CBC with a zero IV on a single block == AES-ECB of that block.
+    const zero = new Uint8Array(16), ecb = new Uint8Array(plainBytes.length), cache = new Map();
+    for (let off = 0; off < plainBytes.length; off += 16) {
+      const blk = plainBytes.subarray(off, off + 16), key = blk.join(",");
+      let c = cache.get(key);
+      if (!c) { c = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-CBC", iv: zero }, kCbc, blk)).subarray(0, 16); cache.set(key, c); }
+      ecb.set(c, off);
+    }
+    paint(ecbC, ecb);
+    const ctr = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-CTR", counter: crypto.getRandomValues(new Uint8Array(16)), length: 64 }, kCtr, plainBytes));
+    paint(ctrC, ctr);
+    note.textContent = `${plainBytes.length / 16} blocks, but only ${cache.size} distinct plaintext blocks, so ECB produced only ${cache.size} distinct ciphertext blocks.`;
+  }
+  FM.$("#ecbNew").addEventListener("click", encryptAll);
+  encryptAll();
+})();
+</script>
+</body>
+</html>

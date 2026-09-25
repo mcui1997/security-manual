@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quantum &amp; Post-Quantum · Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/site.js"></script>
+<style>
+  .algos { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-top: 14px; }
+  .algo { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); transition: border-color .3s, background .3s; }
+  .algo b { display: block; font-size: 15px; }
+  .algo .use { font-size: 12.5px; color: var(--ink-3); }
+  .algo .st { margin-top: 8px; font-size: 13px; font-weight: 600; }
+  .algo.broken { border-color: var(--red); background: var(--red-soft); }
+  .algo.weak { border-color: var(--amber); background: var(--amber-soft); }
+  .algo.safe { border-color: var(--green); background: var(--green-soft); }
+  .mosca { margin-top: 16px; }
+  .track { position: relative; height: 34px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; margin: 6px 0; overflow: hidden; }
+  .seg-x, .seg-y { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding-left: 8px; font: 600 12px var(--sans); color: #fff; white-space: nowrap; overflow: hidden; transition: width .2s, left .2s; }
+  .seg-x { background: var(--blue); left: 0; }
+  .seg-y { background: var(--violet); }
+  .zline { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--red); transition: left .2s; }
+  .zlabel { position: absolute; top: 0; font: 700 11.5px var(--sans); color: var(--red); transform: translateX(6px); transition: left .2s; white-space: nowrap; }
+  .years { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--ink-3); }
+  .timeline { border-left: 3px solid var(--line); margin: 20px 0 20px 8px; padding-left: 20px; }
+  .timeline div { position: relative; margin-bottom: 14px; font-size: 16.5px; }
+  .timeline div::before { content: ""; position: absolute; left: -28px; top: 7px; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); }
+  .timeline b { font-family: var(--mono); font-size: 13.5px; color: var(--accent); display: block; }
+</style>
+</head>
+<body data-page="quantum">
+<div id="progress"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div>
+    <div class="topbar" id="topbar"></div>
+    <main>
+      <article class="page">
+        <div class="eyebrow">Chapter 09 · Frontier · current course</div>
+        <h1>Quantum &amp; post-quantum</h1>
+        <p class="dek">This is where the degree comes full circle. Chapter 01 said security rests on hardness assumptions. Quantum computing makes <em>specific</em> hard problems easy, and those are the exact problems public-key cryptography is built on.</p>
+        <div class="meta"><span id="readTime"></span><span>·</span><div class="chips"><span class="chip">Quantum AI for Cybersecurity (Fall 2026)</span><span class="chip">Cryptology</span><span class="chip">PKI</span><span class="chip">Algorithms</span></div></div>
+
+        <div class="box note"><span class="label">Living chapter</span><p>I'm taking this course now, and this field moves quickly. Facts here are as of mid-2026. Recheck dates and standards status before quoting them in an interview.</p></div>
+
+        <div class="core"><span class="label">Core idea</span>
+          A large, fault-tolerant quantum computer would <strong>break today's public-key crypto</strong> (RSA, Diffie-Hellman, elliptic curves) but only <strong>dent symmetric crypto and hashes</strong>. Replacement algorithms are already standardized. So the real challenge is a <strong>migration and crypto-agility problem</strong> with a deadline nobody knows, made urgent by attackers recording encrypted traffic today.
+        </div>
+
+        <h2><span class="h-num">9.1</span>What a quantum computer actually does</h2>
+        <p>The pop-science version, “it tries every answer at once,” is wrong in a way that matters. A quantum computer manipulates <strong>qubits</strong> in superposition, but measuring one gives you a single random outcome. Quantum algorithms work by choreographing <strong>interference</strong>, so wrong answers cancel and the right answer is amplified. That only works for problems with special mathematical structure. So quantum computers aren't faster at everything. They're dramatically faster at a few specific things, and two of those specific things are exactly what security depends on:</p>
+        <ul>
+          <li><strong>Shor's algorithm (1994):</strong> factors integers and computes discrete logarithms in polynomial time, by finding the period of a function. That's an <em>exponential</em> speedup, and it breaks RSA, finite-field Diffie-Hellman, and elliptic-curve crypto (ECDH, ECDSA, Ed25519) completely.</li>
+          <li><strong>Grover's algorithm (1996):</strong> searches an unstructured space in about √N steps instead of N. That's a <em>quadratic</em> speedup, which roughly halves the effective bits of a symmetric key. And Grover parallelizes poorly, so in practice it's weaker than that. AES-256 stays comfortable, and AES-128 is generally still considered adequate.</li>
+        </ul>
+        <p>Toggle the adversary and see what's left standing:</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>What quantum breaks</b></div>
+          <div class="lab-body">
+            <div class="seg" id="qMode"><button type="button" data-v="classical" aria-pressed="true">Classical attacker</button><button type="button" data-v="quantum" aria-pressed="false">Cryptographically relevant quantum computer</button></div>
+            <div class="algos" id="algos"></div>
+          </div>
+          <div class="lab-foot">Notice what's red: everything that does <em>key exchange</em> and <em>signatures</em>, which is TLS, SSH, VPNs, code signing, and the whole PKI from Chapter 04. The bulk encryption layer survives.</div>
+        </div>
+
+        <h2><span class="h-num">9.2</span>How close is it?</h2>
+        <p>Nobody knows, and honest experts disagree. Today's machines have on the order of hundreds to low thousands of <em>noisy physical</em> qubits. Breaking RSA-2048 needs error-corrected <em>logical</em> qubits, each built from many physical ones. Resource estimates have been falling fast: a 2025 estimate by Google's Craig Gidney put RSA-2048 at under a million noisy qubits running for under a week, about twenty times fewer than his 2019 estimate. The machine that could do it is called a <strong>CRQC</strong> (cryptographically relevant quantum computer). The debate is about <em>when</em>, not <em>if</em>, and that's enough to act on because of one attack.</p>
+
+        <h3>Harvest now, decrypt later</h3>
+        <p>An adversary can record encrypted traffic today and store it until a CRQC exists. Anything whose confidentiality must outlast that date (health records, state secrets, long-lived IP, identities) is <em>already</em> exposed if it travels over quantum-vulnerable key exchange. Michele Mosca put it as an inequality: <strong>if X + Y &gt; Z, you have a problem</strong>, where X is how long the data must stay secret, Y is how long your migration takes, and Z is the time until a CRQC.</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Mosca's inequality</b><span class="hint">starting from 2026</span></div>
+          <div class="lab-body">
+            <div class="grid2">
+              <div><label for="mx">X: data must stay secret for <span id="mxO" class="mono"></span> years</label><input type="range" id="mx" min="0" max="30" value="10"></div>
+              <div><label for="my">Y: your migration takes <span id="myO" class="mono"></span> years</label><input type="range" id="my" min="1" max="15" value="6"></div>
+            </div>
+            <label for="mz">Z: a CRQC arrives in <span id="mzO" class="mono"></span> years (your guess)</label><input type="range" id="mz" min="3" max="30" value="12">
+            <div class="mosca">
+              <div class="track" id="mTrack"><div class="seg-y" id="mY"></div><div class="seg-x" id="mX"></div><div class="zline" id="mZ"></div><span class="zlabel" id="mZl">CRQC</span></div>
+              <div class="years"><span>2026</span><span>2036</span><span>2046</span><span>2056</span><span>2066</span></div>
+            </div>
+            <p id="mMsg" style="margin:14px 0 0"></p>
+          </div>
+          <div class="lab-foot">Migration comes first on the bar (you're exposed until it finishes), then the data's secrecy lifetime. Anything past the red line is readable by the adversary. This is why governments set deadlines years before anyone expects a CRQC.</div>
+        </div>
+
+        <h2><span class="h-num">9.3</span>The replacements are here</h2>
+        <p>Post-quantum cryptography (PQC) means <em>classical</em> algorithms, running on ordinary computers, built on math problems believed hard even for quantum computers, mostly <strong>lattices</strong> (finding short vectors in high-dimensional grids) and <strong>hash functions</strong>. After an eight-year public competition, NIST published the first standards:</p>
+        <div class="timeline">
+          <div><b>Aug 2024 · FIPS 203 · ML-KEM</b>(formerly CRYSTALS-Kyber) Lattice-based key encapsulation. It replaces ECDH/RSA key exchange and is the one that fixes harvest-now-decrypt-later.</div>
+          <div><b>Aug 2024 · FIPS 204 · ML-DSA</b>(formerly CRYSTALS-Dilithium) Lattice-based signatures, the general-purpose replacement for RSA/ECDSA signatures.</div>
+          <div><b>Aug 2024 · FIPS 205 · SLH-DSA</b>(formerly SPHINCS+) Hash-based signatures. It's slower with bigger signatures, but it rests only on hash security: a conservative backup if lattices fall.</div>
+          <div><b>Next · FIPS 206 · FN-DSA</b>(Falcon) Compact lattice signatures, still being finalized. Check its current status.</div>
+          <div><b>Mar 2025 · HQC selected</b>A code-based KEM chosen as a backup to ML-KEM, built on different math for diversity.</div>
+        </div>
+        <p>And deployment is already real. Chrome and other major browsers negotiate the <strong>hybrid X25519MLKEM768</strong> key exchange by default, and Cloudflare reports a large share of its traffic is now post-quantum protected. OpenSSH 10 made hybrid ML-KEM its default key exchange, and Signal (PQXDH) and Apple's iMessage (PQ3) added PQ key agreement. <strong>Hybrid</strong> means combining a classical and a PQ algorithm, so the connection is safe unless <em>both</em> break. It's a hedge against new PQ algorithms having undiscovered weaknesses, which already happened once: SIKE, a competition finalist, was broken in 2022 on a single laptop core in about an hour.</p>
+        <p>Government timelines make this concrete. NIST's transition guidance (IR 8547) proposes deprecating quantum-vulnerable RSA and ECC around 2030 and disallowing them by 2035, and the NSA's CNSA 2.0 sets earlier deadlines for national security systems.</p>
+
+        <h2><span class="h-num">9.4</span>Why migration is hard: it's Chapter 04 again</h2>
+        <p>Swapping an algorithm sounds like a config change. In practice:</p>
+        <ul>
+          <li><strong>You don't know where your crypto is.</strong> Step one is a <strong>cryptographic inventory</strong> (sometimes called a CBOM): every library, protocol, certificate, HSM, and hard-coded algorithm choice.</li>
+          <li><strong>Sizes change.</strong> ML-KEM public keys and ciphertexts are around a kilobyte, and ML-DSA signatures are a few kilobytes, versus tens of bytes for elliptic curves. Certificate chains get bigger, handshakes may span more packets, and constrained IoT devices and protocols with fixed field sizes break.</li>
+          <li><strong>PKI is the long pole.</strong> Signatures need new roots, new intermediates, HSM support, and every relying party's verifiers upgraded. That's why key exchange is migrating first and signatures later.</li>
+          <li><strong>Crypto agility</strong> is the lasting lesson. Systems that hard-code an algorithm need a rewrite; systems that negotiate or configure it need an update. The 47-day certificate push from Chapter 04 is partly about building this muscle.</li>
+        </ul>
+
+        <h2><span class="h-num">9.5</span>Quantum + AI: an honest take</h2>
+        <p>The course pairs quantum with AI, and it's worth being precise about what's real. <strong>Quantum machine learning</strong> (variational quantum circuits, quantum kernel methods) is an active research area, and there are proposals for quantum-enhanced anomaly detection and classification in security. But as of today there is <strong>no demonstrated practical advantage</strong> over classical ML for real security workloads. Current hardware is small and noisy, loading classical data into quantum states is a bottleneck, training suffers from “barren plateaus” (vanishing gradients), and several claimed speedups were later matched by quantum-<em>inspired</em> classical algorithms. The near-term security impact of quantum is overwhelmingly the <strong>cryptographic threat</strong>, not quantum-powered defense.</p>
+        <p>Two related terms to keep straight. <strong>QKD</strong> (quantum key distribution) uses physics to distribute keys, but it needs dedicated hardware and links, doesn't authenticate on its own, and the NSA doesn't recommend it for national security systems. PQC is the mainstream path. <strong>QRNGs</strong> (quantum random number generators) are real products that provide physical randomness, and they're useful, but OS CSPRNGs are already sufficient for nearly all uses.</p>
+
+        <div class="box breaks"><span class="label">Where it breaks</span>
+          <ul>
+            <li><strong>Waiting for certainty:</strong> by the time a CRQC is announced, recorded traffic is already exposed and migration still takes years.</li>
+            <li><strong>No inventory:</strong> you can't migrate crypto you can't find, including in vendors' products.</li>
+            <li><strong>Going PQ-only too early:</strong> new algorithms have had less scrutiny (SIKE). Hybrids hedge.</li>
+            <li><strong>Implementation bugs:</strong> new algorithms mean new side-channel and implementation risks. Chapter 03 applies again: use vetted libraries.</li>
+            <li><strong>Quantum hype:</strong> vendors selling “quantum-safe” magic or quantum AI advantage that doesn't exist yet.</li>
+          </ul>
+        </div>
+
+        <div class="box job"><span class="label">On the job (AppSec)</span>
+          <ul>
+            <li><strong>Crypto inventory:</strong> SAST and SCA rules that find RSA and ECC usage and hard-coded algorithm choices.</li>
+            <li><strong>Design reviews</strong> that ask whether new systems are crypto-agile, with algorithms in configuration and room for larger keys and signatures.</li>
+            <li><strong>Prioritizing by data lifetime:</strong> long-lived sensitive data in transit gets hybrid PQ key exchange first.</li>
+            <li><strong>Vendor questions:</strong> “What's your PQC roadmap?” is now a standard security-questionnaire item.</li>
+          </ul>
+        </div>
+
+        <div class="box sixty"><span class="label">Say it in 60 seconds</span>
+          <p>“Quantum computing threatens cryptography asymmetrically. Shor's algorithm would completely break RSA and elliptic-curve crypto, so all our key exchange and signatures. Grover only weakens symmetric crypto, so AES-256 is fine. Nobody knows when a cryptographically relevant quantum computer arrives, but ‘harvest now, decrypt later’ means long-lived data is exposed today, and Mosca's inequality captures that urgency. The good news is the replacements are standardized: ML-KEM, ML-DSA, and SLH-DSA from NIST in 2024, and hybrid PQ key exchange is already the default in major browsers and OpenSSH. So the real work is migration: cryptographic inventory, crypto agility, and handling bigger keys and signatures, especially in PKI. On quantum AI, I'm realistic. It's promising research, but there's no demonstrated practical advantage for security yet.”</p>
+        </div>
+
+        <h2>Check yourself</h2>
+        <div class="qs">
+          <details class="q"><summary>Why does Shor break RSA but Grover only weakens AES?</summary><div class="a"><p>RSA and ECC rely on problems with hidden periodic structure (factoring, discrete log), which Shor exploits for an exponential speedup. AES has no such structure, so the best quantum attack is generic search, and Grover gives only a quadratic speedup, roughly halving effective key bits, with poor parallelization. Doubling key length (AES-256) restores the margin.</p></div></details>
+          <details class="q"><summary>What is “harvest now, decrypt later,” and which fix addresses it?</summary><div class="a"><p>Adversaries record encrypted traffic today to decrypt once a CRQC exists. It's addressed by migrating <em>key exchange</em> to post-quantum or hybrid (ML-KEM). Signatures don't have this problem the same way, since a forged signature in the future doesn't retroactively compromise past authentication, which is why key exchange is migrating first.</p></div></details>
+          <details class="q"><summary>What does “hybrid” mean in PQ TLS, and why use it?</summary><div class="a"><p>Combining a classical key exchange (X25519) with a PQ one (ML-KEM-768) and deriving the session key from both. The connection stays secure unless both are broken. It protects against quantum attackers and against undiscovered flaws in the newer PQ algorithm.</p></div></details>
+          <details class="q"><summary>What would you do first if asked to lead PQC readiness?</summary><div class="a"><p>Build a cryptographic inventory and classify systems by data sensitivity and lifetime (Mosca). Enable hybrid PQ key exchange where libraries already support it (TLS terminators, SSH). Require crypto agility in new designs. Get PQC roadmaps from vendors. Plan the longer PKI and signature migration with test environments for larger certificates.</p></div></details>
+        </div>
+
+        <div class="chapter-end" id="chapterEnd"></div>
+      </article>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  const A = [
+    ["RSA-2048", "key transport, signatures", ["safe", "Secure"], ["broken", "✗ Broken by Shor"]],
+    ["ECDH / X25519", "TLS & SSH key exchange", ["safe", "Secure"], ["broken", "✗ Broken by Shor"]],
+    ["ECDSA / Ed25519", "certificates, code signing", ["safe", "Secure"], ["broken", "✗ Broken by Shor"]],
+    ["Diffie-Hellman", "VPNs, older TLS", ["safe", "Secure"], ["broken", "✗ Broken by Shor"]],
+    ["AES-128", "bulk encryption", ["safe", "Secure"], ["weak", "△ Grover: ~64-bit in theory; generally still considered adequate"]],
+    ["AES-256", "bulk encryption", ["safe", "Secure"], ["safe", "✓ Secure (~128-bit margin)"]],
+    ["SHA-256 / SHA-3", "hashing, integrity", ["safe", "Secure"], ["safe", "✓ Secure (collision margin shrinks slightly)"]],
+    ["ML-KEM (FIPS 203)", "PQ key exchange", ["safe", "Secure"], ["safe", "✓ Designed for this"]],
+    ["ML-DSA (FIPS 204)", "PQ signatures", ["safe", "Secure"], ["safe", "✓ Designed for this"]],
+    ["SLH-DSA (FIPS 205)", "hash-based signatures", ["safe", "Secure"], ["safe", "✓ Rests only on hashes"]]
+  ];
+  function render(m) {
+    FM.$("#algos").innerHTML = A.map(([n, u, c, q]) => { const s = m === "quantum" ? q : c; return `<div class="algo ${s[0]}"><b>${n}</b><span class="use">${u}</span><div class="st">${s[1]}</div></div>`; }).join("");
+  }
+  FM.seg(FM.$("#qMode"), render); render("classical");
+
+  const span = 40, pct = y => Math.min(100, y / span * 100);
+  function mosca() {
+    const x = +FM.$("#mx").value, y = +FM.$("#my").value, z = +FM.$("#mz").value;
+    FM.$("#mxO").textContent = x; FM.$("#myO").textContent = y; FM.$("#mzO").textContent = z;
+    const Y = FM.$("#mY"), X = FM.$("#mX");
+    Y.style.left = "0"; Y.style.width = pct(y) + "%"; Y.textContent = y >= 3 ? "migrating" : "";
+    X.style.left = pct(y) + "%"; X.style.width = Math.max(0, pct(x + y) - pct(y)) + "%"; X.textContent = x >= 3 ? "data must stay secret" : "";
+    FM.$("#mZ").style.left = pct(z) + "%"; FM.$("#mZl").style.left = pct(z) + "%";
+    const over = x + y - z;
+    FM.$("#mMsg").innerHTML = over > 0
+      ? `<span class="pill bad">X + Y = ${x + y} &gt; Z = ${z}</span> Data sent in 2026 will still need protecting ${over} year${over > 1 ? "s" : ""} after a CRQC exists. If it crosses the network under classical key exchange, it's harvestable <em>today</em>.`
+      : `<span class="pill ok">X + Y = ${x + y} ≤ Z = ${z}</span> You finish migrating and the data expires before a CRQC arrives, with a ${-over}-year margin. (Is your Z guess conservative?)`;
+  }
+  ["#mx", "#my", "#mz"].forEach(s => FM.$(s).addEventListener("input", mosca)); mosca();
+})();
+</script>
+</body>
+</html>

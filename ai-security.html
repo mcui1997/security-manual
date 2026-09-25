@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI: Tool &amp; Target · Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/site.js"></script>
+<style>
+  .stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .stat div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12.5px; color: var(--ink-3); }
+  @media (max-width: 560px) { .stat { grid-template-columns: 1fr; } }
+  .p2p { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 640px) { .p2p { grid-template-columns: 1fr; } }
+  #pxCanvas { width: 100%; image-rendering: pixelated; border-radius: 8px; border: 1px solid var(--line); cursor: crosshair; }
+  .tokens { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
+  .tokens i { width: 12px; height: 12px; border-radius: 2px; background: var(--accent); opacity: .85; }
+  .tokens i.cls { background: var(--violet); }
+  .bar { height: 12px; border-radius: 6px; background: var(--accent); transition: width .3s; }
+  .bar.b { background: var(--ink-3); }
+  #fsSvg { width: 100%; background: var(--bg); border-radius: 10px; border: 1px solid var(--line); cursor: crosshair; touch-action: manipulation; }
+  .paper { display: grid; grid-template-columns: 110px 1fr; gap: 18px; align-items: start; }
+  .paper .pdf { aspect-ratio: .77; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); padding: 10px 8px; font: 700 8.5px/1.25 var(--serif); text-align: center; color: var(--ink); }
+  .paper .pdf i { display: block; height: 3px; background: var(--line); margin: 4px 0; border-radius: 2px; }
+  @media (max-width: 560px) { .paper { grid-template-columns: 1fr; } .paper .pdf { width: 110px; } }
+</style>
+</head>
+<body data-page="ai">
+<div id="progress"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div>
+    <div class="topbar" id="topbar"></div>
+    <main>
+      <article class="page">
+        <div class="eyebrow">Chapter 06 · AI</div>
+        <h1>AI: tool &amp; target</h1>
+        <p class="dek">Two courses and my biggest project live here. AI shows up in security twice: as a <em>tool</em> defenders use to see more than humans can, and as a <em>target</em>, a new kind of software with its own attack surface. You need both views at once.</p>
+        <div class="meta"><span id="readTime"></span><span>·</span><div class="chips"><span class="chip">AI for Cybersecurity</span><span class="chip">AI/ML Ops</span><span class="chip">Project: Packets to Pixels</span></div></div>
+
+        <div class="core"><span class="label">Core idea</span>
+          ML is a pattern-matcher that scales far beyond human attention, but it's <strong>statistical, brittle at the edges, and trained on the past</strong>, while attackers adapt. So it's a force multiplier for analysts, not a replacement. And the moment you deploy a model, <strong>the model, its data, and its pipeline become attack surface.</strong>
+        </div>
+
+        <h2><span class="h-num">6.1</span>AI as a tool: where ML earns its place</h2>
+        <p>Security produces more data than any team can read: billions of log lines, packets, binaries, and emails. ML is good wherever a human expert <em>could</em> decide but can't do it a million times a day: spam and phishing filtering, malware family classification, network intrusion detection, user-behavior anomalies (UEBA), and alert triage. Two broad styles:</p>
+        <ul>
+          <li><strong>Supervised</strong> (learn from labeled examples): accurate on known threats, blind to genuinely new ones, and only as good as its labels.</li>
+          <li><strong>Unsupervised / anomaly detection</strong> (learn “normal,” flag deviations): can catch the novel, but “unusual” isn't the same as “malicious,” so it's noisy.</li>
+        </ul>
+        <p>The single most important number in applied security ML isn't accuracy. It's the <strong>base rate</strong>. Attacks are rare, so even a very good detector can bury a SOC in false alarms. Play with it:</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>The base-rate trap</b><span class="hint">why “99% accurate” can be useless</span></div>
+          <div class="lab-body">
+            <div class="grid2">
+              <div><label for="brRate">Malicious events: 1 in <span id="brRateOut" class="mono"></span></label><input type="range" id="brRate" min="1" max="6" step="0.1" value="4"></div>
+              <div><label for="brFpr">False-positive rate: <span id="brFprOut" class="mono"></span></label><input type="range" id="brFpr" min="-5" max="-1" step="0.1" value="-2"></div>
+            </div>
+            <div><label for="brTpr" style="margin-top:6px">Detection rate (recall): <span id="brTprOut" class="mono"></span></label><input type="range" id="brTpr" min="50" max="100" step="1" value="99"></div>
+            <div class="stat">
+              <div><b id="brAlerts"></b><span>alerts per 1M events</span></div>
+              <div><b id="brTrue"></b><span>of those are real attacks</span></div>
+              <div><b id="brPrec" style="color:var(--accent)"></b><span>precision: chance an alert is real</span></div>
+            </div>
+            <p id="brMsg" style="margin:14px 0 0"></p>
+          </div>
+          <div class="lab-foot">This is Bayes' theorem, and it's why detection engineering obsesses over false-positive rates, and why ML output usually feeds <em>prioritization</em> for a human rather than automatic blocking.</div>
+        </div>
+
+        <h2><span class="h-num">6.2</span>My project: <em>From Packets to Pixels</em></h2>
+        <div class="paper">
+          <div class="pdf" aria-hidden="true">From Packets to Pixels: A Vision Transformer &amp; Few-Shot Learning Approach to Malicious Network Threat Detection<i></i><i></i><i style="width:70%"></i><i></i><i></i><i style="width:80%"></i></div>
+          <div>
+            <p style="margin-top:0"><strong>Stein, Price, Donato, Ontiveros Garcia, Cui, Watkins.</strong> Johns Hopkins University, Department of Computer Science.</p>
+            <p>The problem: classify network traffic as benign or as a specific malware family, including families the model has barely seen, using the <strong>CIC-IoT23</strong> malware-traffic dataset. IoT networks were the setting because the devices are always on, rarely patched, and a favorite target for botnets.</p>
+          </div>
+        </div>
+
+        <h3>The idea in three moves</h3>
+        <ol>
+          <li><strong>Transformers see globally, but bytes make sequences too long.</strong> CNNs and LSTMs capture <em>local</em> byte patterns well but struggle with dependencies that span a whole packet or flow. Transformers use self-attention, so every position can attend to every other from the first layer. But if every byte is a token, a packet becomes a very long sequence, and attention cost grows with the <em>square</em> of the sequence length.</li>
+          <li><strong>So we made packets into images.</strong> We grouped contiguous byte segments into fixed-size patches and arranged them on a 2D grid, a “packet image.” Each patch becomes <em>one</em> token for a <strong>Vision Transformer (ViT)</strong>. The sequence gets dramatically shorter, and the ViT still attends across the entire packet.</li>
+          <li><strong>New malware shouldn't require retraining.</strong> We used the trained ViT as a feature extractor and added a <strong>few-shot learning</strong> module, so the system can adapt to a new malware class from only a handful of labeled examples. That matters because attackers ship new variants constantly and labeled data is scarce.</li>
+        </ol>
+        <p>Result: strong accuracy across multiple malware families on CIC-IoT23, outperforming the baseline methods we compared against.</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Packets → pixels → patch tokens</b><span class="hint">an illustration of the encoding, not the exact pipeline</span></div>
+          <div class="lab-body">
+            <div class="row">
+              <div class="seg" id="pxPreset">
+                <button type="button" data-v="http" aria-pressed="true">Benign HTTP</button>
+                <button type="button" data-v="telnet" aria-pressed="false">Botnet telnet scan</button>
+                <button type="button" data-v="c2" aria-pressed="false">Encrypted C2 beacon</button>
+              </div>
+            </div>
+            <div class="p2p">
+              <div>
+                <canvas id="pxCanvas" width="256" height="256" aria-label="Packet bytes rendered as a 16 by 16 grayscale image"></canvas>
+                <div class="small" id="pxHover" style="font-family:var(--mono);font-size:12.5px;margin-top:6px;min-height:1.4em">hover a pixel to see its byte</div>
+              </div>
+              <div>
+                <label for="pxPatch">Patch size: <span id="pxPatchOut" class="mono"></span></label>
+                <input type="range" id="pxPatch" min="0" max="3" step="1" value="2">
+                <p style="margin:10px 0 4px;font-size:14px"><b>Tokens the transformer sees</b></p>
+                <div class="small" style="font-family:var(--sans)">Per-byte tokenization: <b id="tkByte"></b></div>
+                <div class="bar b" id="barByte" style="width:100%"></div>
+                <div class="small" style="font-family:var(--sans);margin-top:8px">Patch tokenization: <b id="tkPatch"></b> (+1 [CLS])</div>
+                <div class="bar" id="barPatch"></div>
+                <div class="tokens" id="tkViz"></div>
+                <p style="margin:12px 0 0;font-size:14px">Self-attention compares every token pair: <b id="attn"></b></p>
+              </div>
+            </div>
+          </div>
+          <div class="lab-foot">256 bytes, 16 × 16 pixels. Header bytes fill the top rows (structured, similar across packets), payload below (text looks textured, encrypted looks like noise). The grid is illustrative; the real input dimensions and patch size are in the paper.</div>
+        </div>
+
+        <h3>Few-shot: learning a new family from five examples</h3>
+        <p>A classifier with a fixed output layer can only name classes it was trained on. Few-shot learning changes the question from “which of my N classes is this?” to “<em>which of these examples is this most similar to?</em>” The ViT maps each packet image to an embedding vector, a point in a learned space where similar traffic clusters together. A new family only needs a few labeled examples (the <em>support set</em>) to define its region of that space. A common approach is to average them into a <strong>prototype</strong> and assign each new sample to the nearest one. Click anywhere to drop a new packet's embedding:</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Nearest-prototype classification</b><span class="hint">click to classify · 2-D stand-in for a high-dimensional embedding</span></div>
+          <div class="lab-body">
+            <svg id="fsSvg" viewBox="0 0 600 300" role="img" aria-label="Embedding space with class prototypes"></svg>
+            <div class="row" style="margin:10px 0 0"><button class="btn" id="fsNew" type="button">Add a new malware family (5 shots)</button><button class="btn" id="fsReset" type="button">Reset</button><span id="fsOut" class="small" style="font-family:var(--sans)"></span></div>
+          </div>
+          <div class="lab-foot">Adding a class costs five labeled samples and zero retraining. The embedding's quality does the heavy lifting, which is why a strong backbone (the ViT) matters. Security catch: an attacker who can craft traffic that lands near the “benign” prototype evades detection (6.4).</div>
+        </div>
+
+        <div class="box mine"><span class="label">How I talk about it</span>
+          <p>“In my AI for Cybersecurity course, our team built a malware-traffic detector for IoT networks. The core idea was to reshape raw packet bytes into 2D ‘packet images’ so we could use a Vision Transformer. Grouping bytes into patches made each patch one token, which kept the global view of self-attention without the huge sequence lengths of per-byte transformers. On top of that, we added few-shot learning so the model could recognize a new malware family from a handful of examples without retraining. We evaluated on CIC-IoT23 and beat our baselines. What I took away is as much about security as ML: representation matters more than architecture, and a detector is only useful if it can adapt as fast as attackers do.”</p>
+          <p class="small" style="margin-top:8px"><b>Fill in before interviews:</b> my specific role on the team, the headline accuracy numbers, the patch size and input dimensions, which baselines we beat, and one thing that didn't work.</p>
+        </div>
+
+        <h2><span class="h-num">6.3</span>MLOps: the model is the easy part</h2>
+        <p>AI/ML Ops reframed everything. A notebook with 97% accuracy is a demo. A model in production is a <em>system</em>: data pipelines, feature stores, training jobs, a model registry, serving infrastructure, and monitoring for <strong>drift</strong>, when real-world data slowly stops looking like the training data. In security, drift isn't just gradual. It's adversarial, because attackers change their behavior specifically to evade you. And every box in that pipeline is something an attacker can target:</p>
+
+        <figure>
+          <svg viewBox="0 0 720 210" role="img" aria-label="ML pipeline with an attack at each stage">
+            <defs><marker id="a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--ink-3)"/></marker></defs>
+            <g font-family="Inter, system-ui, sans-serif" font-size="13" text-anchor="middle">
+              <g><rect x="6" y="30" width="120" height="56" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="66" y="63" fill="var(--ink)" font-weight="600">Data</text></g>
+              <g><rect x="150" y="30" width="120" height="56" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="210" y="63" fill="var(--ink)" font-weight="600">Training</text></g>
+              <g><rect x="294" y="30" width="120" height="56" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="354" y="63" fill="var(--ink)" font-weight="600">Model registry</text></g>
+              <g><rect x="438" y="30" width="120" height="56" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="498" y="63" fill="var(--ink)" font-weight="600">Serving / API</text></g>
+              <g><rect x="582" y="30" width="130" height="56" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="647" y="63" fill="var(--ink)" font-weight="600">Monitoring</text></g>
+              <path d="M126 58 h22 M270 58 h22 M414 58 h22 M558 58 h22" stroke="var(--ink-3)" stroke-width="2" marker-end="url(#a6)"/>
+              <g fill="var(--red)" font-size="12">
+                <text x="66" y="118" font-weight="700">Poisoning</text><text x="66" y="136">tainted or</text><text x="66" y="152">backdoored data</text>
+                <text x="210" y="118" font-weight="700">Supply chain</text><text x="210" y="136">malicious deps,</text><text x="210" y="152">pretrained weights</text>
+                <text x="354" y="118" font-weight="700">Model files</text><text x="354" y="136">pickle = code exec;</text><text x="354" y="152">tampered artifacts</text>
+                <text x="498" y="118" font-weight="700">Evasion · theft</text><text x="498" y="136">adversarial inputs,</text><text x="498" y="152">extraction, inference</text>
+                <text x="647" y="118" font-weight="700">Blind spots</text><text x="647" y="136">drift unnoticed,</text><text x="647" y="152">no audit trail</text>
+              </g>
+              <path d="M6 180 H712" stroke="var(--line)"/><text x="360" y="200" fill="var(--ink-3)" font-size="12">Same controls as any software supply chain: provenance, signing, least privilege, integrity checks, and monitoring</text>
+            </g>
+          </svg>
+        </figure>
+
+        <h2><span class="h-num">6.4</span>AI as a target</h2>
+        <p>Adversarial ML has four classic attack families, catalogued in <strong>MITRE ATLAS</strong> (ATT&amp;CK for AI systems):</p>
+        <ul>
+          <li><strong>Evasion:</strong> craft inputs the model misclassifies. Tiny perturbations fool image models; for my packet detector, it would mean padding or reshaping malicious traffic until it embeds near “benign.” Detectors meet an adaptive adversary, not a static test set.</li>
+          <li><strong>Poisoning:</strong> corrupt the training data so the model learns a blind spot or a backdoor trigger. It's dangerous in security because training data often comes from the very environment the attacker is in.</li>
+          <li><strong>Extraction:</strong> query a model enough to clone it, then craft evasions offline.</li>
+          <li><strong>Inference:</strong> learn private facts about the training data (membership inference, or regurgitation of memorized secrets).</li>
+        </ul>
+        <p>LLM applications added a new layer, catalogued in the <strong>OWASP Top 10 for LLM Applications (2025)</strong>. It starts with <em>LLM01 Prompt Injection</em> and includes sensitive information disclosure, supply chain, data and model poisoning, improper output handling, <em>excessive agency</em>, system prompt leakage, vector/embedding weaknesses, misinformation, and unbounded consumption. The throughline is Chapter 05's lesson. The model can't separate instructions from data, so <strong>security has to come from the system around it</strong>: least-privilege tools, human approval for consequential actions, output treated as untrusted, and isolation of untrusted content. Agents that take real actions make this the fastest-moving area of AppSec.</p>
+
+        <div class="box breaks"><span class="label">Where it breaks</span>
+          <ul>
+            <li><strong>Benchmark ≠ battlefield:</strong> high accuracy on a static dataset (including public ones like CIC-IoT23) says little about an adversary adapting to your model.</li>
+            <li><strong>Base rates:</strong> a detector that floods analysts with false positives gets turned off, which is the same as no detector.</li>
+            <li><strong>Unexplainable verdicts:</strong> analysts can't act on “the model says 0.93.” Attention maps and nearest-neighbor examples help build trust.</li>
+            <li><strong>Loading untrusted model files:</strong> Python pickle deserialization executes code. Prefer safetensors, and scan and pin models from public hubs.</li>
+            <li><strong>LLM features with too much agency:</strong> a summarizer that can also send email is an injection waiting to happen.</li>
+          </ul>
+        </div>
+
+        <div class="box job"><span class="label">On the job (AppSec)</span>
+          <ul>
+            <li><strong>Reviewing AI features</strong> is now a core AppSec task: map the tools and data the model can reach, look for prompt-injection paths, and enforce authorization on tool calls with the <em>user's</em> permissions, not the service's.</li>
+            <li><strong>ML supply chain:</strong> model provenance, signed artifacts, dependency scanning for ML stacks, secrets in notebooks.</li>
+            <li><strong>Using AI defensively:</strong> LLM-assisted code review, triage, and threat modeling. Useful, but verify, because it inherits the base-rate problem.</li>
+            <li><strong>Frameworks to name-drop accurately:</strong> OWASP LLM Top 10, MITRE ATLAS, NIST AI RMF.</li>
+          </ul>
+        </div>
+
+        <div class="box sixty"><span class="label">Say it in 60 seconds</span>
+          <p>“I look at AI in security from two sides. As a tool, ML scales detection beyond human attention, and my team's research project was a Vision Transformer that classifies IoT malware traffic by turning packets into images, with few-shot learning so it can adapt to new malware families from a handful of examples. But I'm realistic about limits. Base rates mean even accurate detectors generate a lot of false positives, and attackers adapt. As a target, a deployed model is new attack surface: poisoning, evasion, extraction, supply-chain risks like malicious model files, and for LLMs, prompt injection. Since a model can't separate instructions from data, the security has to come from the system around it: least privilege, human approval, and treating output as untrusted.”</p>
+        </div>
+
+        <h2>Check yourself</h2>
+        <div class="qs">
+          <details class="q"><summary>Why a Vision Transformer on packets instead of a CNN or LSTM?</summary><div class="a"><p>CNNs capture local patterns and LSTMs process sequences step by step; both struggle with long-range dependencies across a packet or flow. Transformers attend globally from the first layer, but per-byte tokens make sequences long, and attention is quadratic in length. Patching bytes into a 2D image cuts the token count while keeping global attention, and it lets us use a mature vision architecture.</p></div></details>
+          <details class="q"><summary>What is few-shot learning, and why does it matter for security?</summary><div class="a"><p>Classifying new classes from a handful of labeled examples, typically by comparing embeddings (for example, nearest prototype) instead of retraining an output layer. It matters because new malware families appear constantly and labeled data for them is scarce at exactly the moment you need it.</p></div></details>
+          <details class="q"><summary>A detector has 99% recall and a 1% false-positive rate. Is it good?</summary><div class="a"><p>It depends on the base rate. If 1 in 10,000 events is malicious, then per million events you'd get about 99 true alerts and about 10,000 false ones, so under 1% of alerts are real. Whether that's usable depends on analyst capacity and what the alerts feed into.</p></div></details>
+          <details class="q"><summary>How would you secure an LLM feature that can read email and send messages?</summary><div class="a"><p>Assume every email can carry prompt injection. Split capabilities: the reading/summarizing path gets no send tools. Require explicit user confirmation for sends, with the actual content shown. Enforce the user's own permissions on every tool call. Filter and validate outputs before they reach other systems. Log tool invocations and rate-limit them. Red-team with indirect injection payloads.</p></div></details>
+        </div>
+
+        <div class="chapter-end" id="chapterEnd"></div>
+      </article>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  /* ================= base rate ================= */
+  const rate = FM.$("#brRate"), fpr = FM.$("#brFpr"), tpr = FM.$("#brTpr");
+  const fmt = n => n >= 100 ? Math.round(n).toLocaleString() : n >= 1 ? n.toFixed(1) : n.toFixed(2);
+  function renderBr() {
+    const oneIn = Math.round(Math.pow(10, +rate.value)), f = Math.pow(10, +fpr.value), t = +tpr.value / 100;
+    FM.$("#brRateOut").textContent = oneIn.toLocaleString();
+    FM.$("#brFprOut").textContent = (f * 100).toFixed(f < 0.0001 ? 4 : f < 0.01 ? 3 : 1) + "%";
+    FM.$("#brTprOut").textContent = Math.round(t * 100) + "%";
+    const N = 1e6, mal = N / oneIn, ben = N - mal, tp = mal * t, fp = ben * f, prec = tp / (tp + fp);
+    FM.$("#brAlerts").textContent = fmt(tp + fp);
+    FM.$("#brTrue").textContent = fmt(tp);
+    FM.$("#brPrec").textContent = (prec * 100).toFixed(prec < .1 ? 2 : 1) + "%";
+    FM.$("#brMsg").innerHTML = prec < .1
+      ? `<span class="pill bad">Alert fatigue</span> For every real attack, analysts chase about ${fmt(fp / Math.max(tp, 1e-9))} false alarms. They'll start ignoring the tool.`
+      : prec < .5 ? `<span class="pill warn">Workable with triage</span> Most alerts are still noise, but ranking and enrichment can make it usable.`
+      : `<span class="pill ok">High signal</span> Most alerts are real. This usually requires a very low false-positive rate or a high base rate (like a pre-filtered queue).`;
+  }
+  [rate, fpr, tpr].forEach(el => el.addEventListener("input", renderBr)); renderBr();
+
+  /* ================= packets to pixels ================= */
+  const cv = FM.$("#pxCanvas"), ctx = cv.getContext("2d");
+  let bytes = new Uint8Array(256);
+  function rng(seed) { return () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296; }
+  function header(r, proto, dport) {
+    // Ethernet(14) + IPv4(20) + TCP(20) = 54 bytes, simplified
+    const h = [0x00, 0x1a, 0x2b, 0x3c, 0x4d, 0x5e, 0x00, 0x0c, 0x29, 0xaa, 0xbb, 0xcc, 0x08, 0x00,
+      0x45, 0x00, 0x01, 0x00, (r() * 255) | 0, (r() * 255) | 0, 0x40, 0x00, 0x40, proto, 0x3a, 0x1f, 192, 168, 1, 23, 192, 168, 1, (r() * 254) | 0,
+      (r() * 255) | 0, (r() * 255) | 0, dport >> 8, dport & 255, (r() * 255) | 0, (r() * 255) | 0, (r() * 255) | 0, (r() * 255) | 0, 0, 0, 0, 0, 0x50, 0x18, 0xfa, 0xf0, (r() * 255) | 0, (r() * 255) | 0, 0, 0];
+    return h;
+  }
+  const PRE = {
+    http: r => [...header(r, 6, 80), ...new TextEncoder().encode("GET /index.html HTTP/1.1\r\nHost: camera.local\r\nUser-Agent: Mozilla/5.0\r\nAccept: text/html\r\nConnection: keep-alive\r\n\r\n")],
+    telnet: r => { const h = header(r, 6, 23); const p = []; const creds = ["root:xc3511", "admin:admin", "root:vizxv", "root:888888", "admin:1234", "root:default", "support:support"]; for (const c of creds) p.push(...new TextEncoder().encode(c + "\r\n"), 0xff, 0xfb, 0x01); return [...h, ...p]; },
+    c2: r => [...header(r, 6, 443), 0x17, 0x03, 0x03, 0x00, 0xc0, ...Array.from({ length: 200 }, () => (r() * 256) | 0)]
+  };
+  function load(k) { const arr = PRE[k](rng(k.length * 97 + 11)); bytes = new Uint8Array(256); bytes.set(arr.slice(0, 256)); draw(); }
+  const patchSizes = [1, 2, 4, 8];
+  function draw() {
+    const P = patchSizes[+FM.$("#pxPatch").value], S = 16, cell = 16;
+    const img = ctx.createImageData(256, 256);
+    for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
+      const b = bytes[((y / cell) | 0) * S + ((x / cell) | 0)], i = (y * 256 + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = b; img.data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    ctx.strokeStyle = "rgba(231,135,95,.95)"; ctx.lineWidth = P === 1 ? .6 : 2;
+    for (let k = 0; k <= S; k += P) { ctx.beginPath(); ctx.moveTo(k * cell, 0); ctx.lineTo(k * cell, 256); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, k * cell); ctx.lineTo(256, k * cell); ctx.stroke(); }
+    const nPatch = (S / P) ** 2;
+    FM.$("#pxPatchOut").textContent = `${P}×${P} bytes`;
+    FM.$("#tkByte").textContent = "256 tokens";
+    FM.$("#tkPatch").textContent = `${nPatch} tokens`;
+    FM.$("#barPatch").style.width = Math.max(2, (nPatch + 1) / 257 * 100) + "%";
+    FM.$("#tkViz").innerHTML = nPatch <= 64 ? '<i class="cls" title="[CLS]"></i>' + "<i></i>".repeat(nPatch) : `<span class="small" style="font-family:var(--sans)">(${nPatch} tokens: same as per-byte)</span>`;
+    const a1 = 257 * 257, a2 = (nPatch + 1) ** 2;
+    FM.$("#attn").textContent = `${a2.toLocaleString()} pairs vs ${a1.toLocaleString()} (${(a1 / a2).toFixed(0)}× fewer)`;
+  }
+  cv.addEventListener("mousemove", e => {
+    const r = cv.getBoundingClientRect(), x = ((e.clientX - r.left) / r.width * 16) | 0, y = ((e.clientY - r.top) / r.height * 16) | 0;
+    const i = y * 16 + x, b = bytes[i];
+    if (i < 0 || i > 255) return;
+    const region = i < 14 ? "Ethernet header" : i < 34 ? "IPv4 header" : i < 54 ? "TCP header" : "payload";
+    FM.$("#pxHover").textContent = `byte ${i}: 0x${b.toString(16).padStart(2, "0")}  '${b >= 32 && b < 127 ? String.fromCharCode(b) : "·"}'  · ${region}`;
+  });
+  FM.$("#pxPatch").addEventListener("input", draw);
+  FM.seg(FM.$("#pxPreset"), load);
+  load("http");
+
+  /* ================= few-shot ================= */
+  const svg = FM.$("#fsSvg"), NS = "http://www.w3.org/2000/svg";
+  const BASE = [
+    { name: "Benign", color: "var(--green)", c: [130, 90] },
+    { name: "Mirai (DDoS)", color: "var(--red)", c: [440, 80] },
+    { name: "Port scan", color: "var(--blue)", c: [300, 230] }
+  ];
+  const NEW = { name: "New family (5-shot)", color: "var(--violet)", c: [510, 225] };
+  let classes, query;
+  function jitter(c, n, s, seed) { const r = rng(seed); return Array.from({ length: n }, () => [c[0] + (r() - .5) * s, c[1] + (r() - .5) * s]); }
+  function reset() { classes = BASE.map((b, i) => ({ ...b, pts: jitter(b.c, 14, 110, i + 3) })); query = null; FM.$("#fsNew").disabled = false; drawFs(); FM.$("#fsOut").textContent = "Click in the space to classify a sample."; }
+  function proto(pts) { return [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length]; }
+  function el(tag, attrs, parent = svg) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+  function drawFs() {
+    svg.innerHTML = "";
+    classes.forEach(c => {
+      c.pts.forEach(p => el("circle", { cx: p[0], cy: p[1], r: 4.5, fill: c.color, opacity: .45 }));
+      const pr = proto(c.pts); c.proto = pr;
+      el("path", { d: `M${pr[0]} ${pr[1] - 11} L${pr[0] + 11} ${pr[1]} L${pr[0]} ${pr[1] + 11} L${pr[0] - 11} ${pr[1]} Z`, fill: c.color, stroke: "var(--surface)", "stroke-width": 2 });
+      const t = el("text", { x: pr[0], y: pr[1] - 17, "text-anchor": "middle", "font-family": "Inter, system-ui, sans-serif", "font-size": 12.5, "font-weight": 700, fill: c.color }); t.textContent = c.name;
+    });
+    if (query) {
+      const best = nearest(query);
+      el("line", { x1: query[0], y1: query[1], x2: best.proto[0], y2: best.proto[1], stroke: best.color, "stroke-width": 2, "stroke-dasharray": "5 4" });
+      el("circle", { cx: query[0], cy: query[1], r: 8, fill: "var(--surface)", stroke: "var(--ink)", "stroke-width": 3 });
+    }
+  }
+  function nearest(q) { let best = null, d = Infinity; classes.forEach(c => { const dd = Math.hypot(q[0] - c.proto[0], q[1] - c.proto[1]); if (dd < d) { d = dd; best = c; } }); return best; }
+  svg.addEventListener("click", e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse()); query = [p.x, p.y]; drawFs();
+    const b = nearest(query); FM.$("#fsOut").innerHTML = `Classified as <b style="color:${b.color}">${b.name}</b> (nearest prototype).`;
+  });
+  FM.$("#fsNew").addEventListener("click", () => { classes.push({ ...NEW, pts: jitter(NEW.c, 5, 70, 42) }); FM.$("#fsNew").disabled = true; drawFs(); FM.$("#fsOut").textContent = "New class added from 5 labeled examples. Click near it."; });
+  FM.$("#fsReset").addEventListener("click", reset);
+  reset();
+})();
+</script>
+</body>
+</html>

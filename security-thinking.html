@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thinking Like Security · Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/site.js"></script>
+<style>
+  #dfd .flow { cursor: pointer; }
+  #dfd .flow path { stroke: var(--ink-3); stroke-width: 2.5; fill: none; transition: stroke .15s, stroke-width .15s; }
+  #dfd .flow .hit { stroke: transparent; stroke-width: 22; }
+  #dfd .flow:hover path.v, #dfd .flow.on path.v { stroke: var(--accent); stroke-width: 4; }
+  #dfd .flow circle { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+  #dfd .flow text { font: 700 12px var(--sans); fill: var(--accent); }
+  .stride { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 12px; }
+  .stride div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .stride b { display: block; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 3px; }
+  .stride em { display: block; font-style: normal; color: var(--ink-3); font-size: 12.5px; margin-top: 4px; }
+  .heat { display: grid; grid-template-columns: 26px repeat(5, 1fr); grid-template-rows: repeat(5, 54px) 26px; gap: 4px; }
+  .heat .c { border-radius: 6px; position: relative; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 3px; padding: 3px; }
+  .heat .ax { font: 600 11px var(--sans); color: var(--ink-3); display: grid; place-items: center; }
+  .heat .yl { writing-mode: vertical-rl; transform: rotate(180deg); }
+  .rk { width: 24px; height: 24px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); font: 700 11px var(--sans); display: grid; place-items: center; cursor: pointer; color: var(--ink); }
+  .rk.on { background: var(--ink); color: var(--bg); }
+  .principles { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin: 16px 0 24px; }
+  .principles div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font: 14px/1.45 var(--sans); color: var(--ink-2); }
+  .principles b { display: block; color: var(--ink); font-size: 14.5px; margin-bottom: 2px; }
+</style>
+</head>
+<body data-page="thinking">
+<div id="progress"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div>
+    <div class="topbar" id="topbar"></div>
+    <main>
+      <article class="page">
+        <div class="eyebrow">Chapter 02 · Ground floor</div>
+        <h1>Thinking like security</h1>
+        <p class="dek">The first real security course didn't teach a tool. It taught a question: <em>secure against whom, protecting what, at what cost?</em> Everything later in the degree is an answer to that question for one specific domain.</p>
+        <div class="meta"><span id="readTime"></span><span>·</span><div class="chips"><span class="chip">Foundations of Information Assurance</span><span class="chip">Web Security (threat modeling)</span></div></div>
+
+        <div class="core"><span class="label">Core idea</span>
+          “Secure” is not a property a system has. It's a claim about a system, <strong>against a specific adversary, protecting specific assets, at an acceptable cost.</strong> The job is making that claim explicit, then finding where it's false.
+        </div>
+
+        <h2><span class="h-num">2.1</span>What we're protecting: CIA, plus two</h2>
+        <p>The CIA triad is the vocabulary every security conversation uses, so it's worth being precise:</p>
+        <ul>
+          <li><strong>Confidentiality:</strong> only the right parties can read it. <em>Breaks via:</em> data leaks, broken access control, unencrypted traffic.</li>
+          <li><strong>Integrity:</strong> it hasn't been changed without authorization. <em>Breaks via:</em> tampering, injection, supply-chain compromise.</li>
+          <li><strong>Availability:</strong> it's there when needed. <em>Breaks via:</em> DDoS, ransomware, and the expired certificate that takes production down.</li>
+        </ul>
+        <p>Two more earn their place in practice: <strong>authenticity</strong> (it really came from who it claims) and <strong>non-repudiation</strong> (they can't later deny sending it). Both come back in Chapters 03 and 04, where digital signatures provide them.</p>
+        <p>Then there's the triple that makes access decisions work, sometimes called AAA: <strong>authentication</strong> (who are you?), <strong>authorization</strong> (what are you allowed to do?), and <strong>accounting/audit</strong> (what did you do?). Hold on to the difference between the first two. <em>Most of application security's worst bugs are authorization bugs in systems with perfectly fine authentication.</em></p>
+
+        <h2><span class="h-num">2.2</span>Principles that don't age</h2>
+        <p>In 1975, Saltzer and Schroeder wrote down design principles for protection systems. Fifty years later they still read like a modern code-review checklist:</p>
+        <div class="principles">
+          <div><b>Least privilege</b>Every component gets only the access it needs, for only as long as it needs it.</div>
+          <div><b>Fail-safe defaults</b>Deny by default. Access is granted explicitly, never assumed.</div>
+          <div><b>Complete mediation</b>Check authorization on <em>every</em> access, not just the first one or the one on the UI.</div>
+          <div><b>Economy of mechanism</b>Keep security code small and simple enough to actually review.</div>
+          <div><b>Open design</b>Security must not depend on the design being secret (Kerckhoffs's principle, restated).</div>
+          <div><b>Separation of privilege</b>Critical actions need more than one key: two people, two factors.</div>
+          <div><b>Least common mechanism</b>Minimize shared state between users; shared things become channels.</div>
+          <div><b>Psychological acceptability</b>If security is painful, people route around it. Usability is a control.</div>
+        </div>
+        <p>Add two modern restatements. <strong>Defense in depth:</strong> assume any single control will fail, so layer them, so that one mistake isn't a breach. <strong>Zero trust:</strong> network location grants nothing, so every request is authenticated and authorized on its own merits. Zero trust is really complete mediation applied to networks.</p>
+
+        <h2><span class="h-num">2.3</span>Threat modeling: the core skill</h2>
+        <p>If this degree gave me one transferable skill, it's this. Threat modeling is structured paranoia, and Adam Shostack's four questions are the whole method:</p>
+        <ol>
+          <li><strong>What are we working on?</strong> Draw the system as a data-flow diagram: processes, data stores, external entities, and the flows between them.</li>
+          <li><strong>What can go wrong?</strong> Walk each flow, especially where it crosses a <strong>trust boundary</strong>, and apply a checklist like STRIDE.</li>
+          <li><strong>What are we going to do about it?</strong> Mitigate, eliminate, transfer, or accept each threat.</li>
+          <li><strong>Did we do a good job?</strong> Validate: test it, review it, revisit it when the design changes.</li>
+        </ol>
+        <p>Here's a small web app. The dashed lines are trust boundaries. Click any numbered flow that crosses one to see what STRIDE turns up there.</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Threat-model a checkout flow</b><span class="hint">click a numbered flow</span></div>
+          <div class="lab-body">
+            <svg id="dfd" viewBox="0 0 700 300" role="img" aria-label="Data flow diagram with trust boundaries">
+              <rect x="190" y="18" width="330" height="262" rx="14" fill="none" stroke="var(--accent)" stroke-dasharray="7 6" stroke-width="1.5"/>
+              <text x="200" y="36" font-family="Inter, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="var(--accent)" letter-spacing=".06em">YOUR INFRASTRUCTURE (TRUSTED)</text>
+              <rect x="400" y="180" width="110" height="90" rx="10" fill="none" stroke="var(--violet)" stroke-dasharray="4 4"/>
+              <text x="408" y="196" font-family="Inter, system-ui, sans-serif" font-size="10.5" font-weight="700" fill="var(--violet)">DATA ZONE</text>
+              <g font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="600" text-anchor="middle">
+                <rect x="20" y="120" width="130" height="56" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="85" y="145" fill="var(--ink)">User's</text><text x="85" y="163" fill="var(--ink)">browser</text>
+                <circle cx="280" cy="148" r="46" fill="var(--green-soft)" stroke="var(--green)"/><text x="280" y="145" fill="var(--ink)">Web</text><text x="280" y="162" fill="var(--ink)">API</text>
+                <path d="M415 225 h80 M415 255 h80" stroke="var(--amber)" stroke-width="2"/><text x="455" y="245" fill="var(--ink)">Orders DB</text>
+                <rect x="560" y="60" width="124" height="56" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="622" y="84" fill="var(--ink)">Payment</text><text x="622" y="102" fill="var(--ink)">provider</text>
+                <rect x="200" y="226" width="118" height="42" rx="6" fill="var(--bg-2)" stroke="var(--ink-3)"/><text x="259" y="252" fill="var(--ink)">Admin panel</text>
+              </g>
+              <g class="flow" data-f="0"><path class="hit" d="M150 148 H234"/><path class="v" d="M150 148 H234" marker-end="url(#ar)"/><circle cx="192" cy="148" r="11"/><text x="192" y="152" text-anchor="middle">1</text></g>
+              <g class="flow" data-f="1"><path class="hit" d="M310 184 Q340 240 410 240"/><path class="v" d="M310 184 Q340 240 410 240" marker-end="url(#ar)"/><circle cx="356" cy="228" r="11"/><text x="356" y="232" text-anchor="middle">2</text></g>
+              <g class="flow" data-f="2"><path class="hit" d="M322 128 Q440 50 556 86"/><path class="v" d="M322 128 Q440 50 556 86" marker-end="url(#ar)"/><circle cx="440" cy="79" r="11"/><text x="440" y="83" text-anchor="middle">3</text></g>
+              <g class="flow" data-f="3"><path class="hit" d="M262 194 L260 222"/><path class="v" d="M262 194 L260 222" marker-end="url(#ar)"/><circle cx="261" cy="208" r="11"/><text x="261" y="212" text-anchor="middle">4</text></g>
+              <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="var(--ink-3)"/></marker></defs>
+            </svg>
+            <div id="strideOut"></div>
+          </div>
+          <div class="lab-foot">STRIDE maps to the properties it violates: <b>S</b>poofing → authenticity · <b>T</b>ampering → integrity · <b>R</b>epudiation → non-repudiation · <b>I</b>nformation disclosure → confidentiality · <b>D</b>enial of service → availability · <b>E</b>levation of privilege → authorization.</div>
+        </div>
+
+        <h2><span class="h-num">2.4</span>Risk: deciding what matters</h2>
+        <p>A threat model produces a long list. Risk management turns it into priorities. The classic formulation is <strong>risk = likelihood × impact</strong>. It's crude, but it forces the right conversation. A dramatic threat that's nearly impossible to pull off can matter less than a boring one that's trivial to exploit.</p>
+        <p>You then choose a <strong>treatment</strong>: <em>mitigate</em> (add a control), <em>avoid</em> (don't build the risky feature), <em>transfer</em> (insurance, or a vendor carries it), or <em>accept</em> (documented, owned, and revisited). Controls themselves come in flavors: <strong>preventive</strong> (MFA), <strong>detective</strong> (alerting), and <strong>corrective</strong> (backups, incident response). Good programs use all three, because prevention eventually fails.</p>
+
+        <div class="lab">
+          <div class="lab-head"><span class="tag">Lab</span><b>Place the risks</b><span class="hint">click a dot to see the reasoning</span></div>
+          <div class="lab-body">
+            <div class="heat" id="heat"></div>
+            <div id="riskOut" style="margin-top:14px;min-height:64px"></div>
+          </div>
+          <div class="lab-foot">Top-right gets fixed now. Bottom-left gets accepted and written down. The interesting arguments happen in the middle.</div>
+        </div>
+
+        <div class="box breaks"><span class="label">Where it breaks</span>
+          <ul>
+            <li><strong>Security as an absolute:</strong> teams that chase “secure” with no threat model spend money on the wrong controls.</li>
+            <li><strong>Checking once:</strong> authorization enforced in the UI but not the API violates complete mediation. That's the most common serious web bug (Chapter 05).</li>
+            <li><strong>Implicit trust:</strong> “it's on the internal network” or “only our service calls this endpoint” are trust assumptions nobody wrote down.</li>
+            <li><strong>Threat models that rot:</strong> a diagram from two years ago describes a system that no longer exists.</li>
+          </ul>
+        </div>
+
+        <div class="box job"><span class="label">On the job (AppSec)</span>
+          <ul>
+            <li><strong>Design reviews</strong> are threat modeling. An AppSec engineer's highest-leverage hour is the one spent on a design doc before code exists.</li>
+            <li><strong>Finding severity</strong> is risk. CVSS scores the vulnerability, but you adjust for context: is it reachable? Is the data sensitive? Is there a compensating control?</li>
+            <li><strong>Saying yes safely.</strong> The goal is enabling the feature with the right controls, not blocking it.</li>
+          </ul>
+        </div>
+
+        <div class="box sixty"><span class="label">Say it in 60 seconds</span>
+          <p>“My foundation is that ‘secure’ only means something relative to a threat, an asset, and a cost. So my core method is threat modeling. I diagram the data flows, mark the trust boundaries, and walk each crossing with something like STRIDE: spoofing, tampering, repudiation, disclosure, denial of service, and privilege escalation. Then I rank what I find by likelihood and impact and pick a treatment. The principles underneath are old and durable: least privilege, deny by default, check authorization on every request, and layer defenses because any single control will eventually fail.”</p>
+        </div>
+
+        <h2>Check yourself</h2>
+        <div class="qs">
+          <details class="q"><summary>What's the difference between authentication and authorization, and which fails more often?</summary><div class="a"><p>Authentication proves identity; authorization decides what that identity may do. Authorization fails far more often in practice, because it's scattered across every endpoint and object, while authentication is usually centralized in one well-tested library or identity provider. That's why Broken Access Control is #1 on the OWASP Top 10.</p></div></details>
+          <details class="q"><summary>Walk me through how you'd threat model a new feature.</summary><div class="a"><p>Use the four questions. Draw the data-flow diagram with trust boundaries. Enumerate threats at each boundary crossing (STRIDE). Rank them by likelihood and impact. Agree on mitigations with the team and turn them into tickets or tests. Revisit when the design changes. Keep it lightweight: a whiteboard and 45 minutes beats a 40-page document nobody reads.</p></div></details>
+          <details class="q"><summary>What is defense in depth? Give a concrete example.</summary><div class="a"><p>Layered, independent controls, so one failure isn't a breach. For SQL injection: parameterized queries (prevent), a least-privilege DB account (limit blast radius), a WAF (partial filter), and query anomaly alerting (detect). Any single one might fail; together they're resilient.</p></div></details>
+          <details class="q"><summary>What does “zero trust” actually mean?</summary><div class="a"><p>No implicit trust based on network location. Every request is authenticated, authorized, and encrypted on its own merits, using identity and device posture, with least privilege. It replaces the “hard shell, soft center” perimeter model, which fails the moment an attacker gets inside.</p></div></details>
+        </div>
+
+        <div class="chapter-end" id="chapterEnd"></div>
+      </article>
+    </main>
+  </div>
+</div>
+<script>
+(function () {
+  const FLOWS = [
+    { name: "① Browser → Web API (crosses the internet boundary)", t: [
+      ["Spoofing", "Stolen session cookie or credential stuffing lets someone act as the user.", "MFA, secure/HttpOnly cookies, rate limiting"],
+      ["Tampering", "User edits the price or quantity in the request body.", "Server recomputes price; never trust client values"],
+      ["Info disclosure", "Traffic sniffed on café Wi-Fi.", "TLS everywhere, HSTS"],
+      ["Denial of service", "Bot floods the checkout endpoint.", "Rate limits, CDN / WAF"],
+      ["Elevation", "Changing /orders/1001 to /orders/1002 shows another user's order (IDOR).", "Object-level authorization on every request"]]},
+    { name: "② Web API → Orders DB (crosses into the data zone)", t: [
+      ["Tampering", "SQL injection through an unsanitized search parameter.", "Parameterized queries, ORM"],
+      ["Info disclosure", "The API's DB account can read every table, so one bug dumps everything.", "Least-privilege DB user, column encryption"],
+      ["Repudiation", "Order records get changed with no trace of who did it.", "Append-only audit log"],
+      ["Elevation", "The DB user has DDL rights, so injection can drop tables.", "Separate migration and runtime accounts"]]},
+    { name: "③ Web API → Payment provider (crosses to a third party)", t: [
+      ["Spoofing", "An attacker forges the “payment succeeded” webhook callback.", "Verify webhook signatures (HMAC)"],
+      ["Info disclosure", "API secret key committed to Git.", "Secrets manager, secret scanning in CI"],
+      ["Tampering", "SSRF: the API is tricked into calling an internal URL.", "Allowlist outbound hosts"],
+      ["Denial of service", "Provider outage takes checkout down.", "Timeouts, circuit breaker, graceful degradation"]]},
+    { name: "④ Web API → Admin panel (privilege boundary)", t: [
+      ["Elevation", "The admin route is hidden in the UI but the endpoint doesn't check the role.", "Server-side role check (complete mediation)"],
+      ["Spoofing", "Admins log in with a password only.", "Phishing-resistant MFA, SSO"],
+      ["Repudiation", "Refunds issued with no record of which admin did it.", "Per-user audit trail"]]}
+  ];
+  const out = FM.$("#strideOut");
+  function show(i) {
+    FM.$$("#dfd .flow").forEach(g => g.classList.toggle("on", g.dataset.f == i));
+    const f = FLOWS[i];
+    out.innerHTML = `<p style="margin:14px 0 4px;font-weight:600">${f.name}</p><div class="stride">${f.t.map(([k, v, m]) => `<div><b>${k}</b>${v}<em>→ ${m}</em></div>`).join("")}</div>`;
+  }
+  FM.$$("#dfd .flow").forEach(g => g.addEventListener("click", () => show(+g.dataset.f)));
+  show(0);
+
+  /* risk heat map */
+  const RISKS = [
+    { id: 1, l: 5, i: 4, n: "IDOR on /orders/{id}", w: "Trivial to find (change a number) and exposes customer PII. High likelihood, high impact: fix this sprint." },
+    { id: 2, l: 4, i: 5, n: "Leaked payment API key in a public repo", w: "Bots scan GitHub for keys within minutes. Direct financial impact. Rotate now, then add secret scanning." },
+    { id: 3, l: 2, i: 5, n: "Nation-state compromise of the cloud provider", w: "Catastrophic but unlikely, and mostly outside your control. Transfer (contracts) and accept; don't spend the sprint here." },
+    { id: 4, l: 4, i: 2, n: "Verbose error pages leak stack traces", w: "Common and easy to find, but low impact on its own. It helps an attacker map the system. Cheap fix: generic errors." },
+    { id: 5, l: 1, i: 1, n: "Clickjacking on the marketing site", w: "Hard to exploit meaningfully, and no sensitive action exists there. Accept, or add one header and move on." },
+    { id: 6, l: 3, i: 3, n: "Outdated library with a known CVE", w: "Middle of the map. Is the vulnerable function reachable? Reachability analysis decides whether this is a 3 or a 5." }
+  ];
+  const heat = FM.$("#heat"), riskOut = FM.$("#riskOut");
+  const color = (l, i) => { const s = l * i; return s >= 15 ? "var(--red-soft)" : s >= 8 ? "var(--amber-soft)" : "var(--green-soft)"; };
+  let h = "";
+  for (let row = 5; row >= 1; row--) {
+    h += `<div class="ax">${row}</div>`;
+    for (let col = 1; col <= 5; col++) {
+      const here = RISKS.filter(r => r.l === row && r.i === col);
+      h += `<div class="c" style="background:${color(row, col)}">${here.map(r => `<button class="rk" type="button" data-id="${r.id}" title="${FM.esc(r.n)}">${r.id}</button>`).join("")}</div>`;
+    }
+  }
+  h += `<div></div>` + [1, 2, 3, 4, 5].map(i => `<div class="ax">${i}</div>`).join("");
+  heat.innerHTML = h;
+  heat.insertAdjacentHTML("beforebegin", `<div class="small" style="font-family:var(--sans);margin-bottom:8px">Rows: <b>likelihood</b> (1–5, bottom to top) · Columns: <b>impact</b> (1–5, left to right)</div>`);
+  function pickRisk(id) {
+    FM.$$(".rk").forEach(b => b.classList.toggle("on", +b.dataset.id === id));
+    const r = RISKS.find(x => x.id === id);
+    riskOut.innerHTML = `<b style="font-size:15px">${r.id}. ${FM.esc(r.n)}</b> <span class="small">likelihood ${r.l} × impact ${r.i} = ${r.l * r.i}</span><p style="margin:6px 0 0">${r.w}</p>`;
+  }
+  heat.addEventListener("click", e => { const b = e.target.closest(".rk"); if (b) pickRisk(+b.dataset.id); });
+  pickRisk(1);
+})();
+</script>
+</body>
+</html>
